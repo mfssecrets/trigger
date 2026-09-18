@@ -21,6 +21,19 @@ import org.koin.core.context.startKoin
 class WhizzzApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
+            try {
+                val options = com.google.firebase.FirebaseOptions.Builder()
+                    .setApiKey("AIzaSyDummyKeyForPreviewTestingOnly12345")
+                    .setApplicationId("1:123456789012:android:abcdef1234567890")
+                    .setProjectId("trigger-chat-preview")
+                    .setDatabaseUrl("https://trigger-chat-preview-default-rtdb.firebaseio.com")
+                    .build()
+                com.google.firebase.FirebaseApp.initializeApp(this, options)
+            } catch (e: Exception) {
+                android.util.Log.w("WhizzzApplication", "Fallback Firebase initialization warning", e)
+            }
+        }
         startKoin {
             androidContext(this@WhizzzApplication)
             modules(

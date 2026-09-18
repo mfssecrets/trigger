@@ -87,3 +87,8 @@ fastlane/test_output/
 
 # --- Generic private keys ---
 *.pem
+*.keystore.base64
+debug.keystore.base64
+metadata.json
+.build-outputs/
+logo.png

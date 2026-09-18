@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -52,10 +53,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.whizzz.core.strings.WhizzzStrings
 import com.example.whizzz.core.ui.whizzzKeyboardInsetPadding
 import com.example.whizzz.feature.auth.ui.components.AuthLoadingOverlay
-import com.example.whizzz.feature.auth.ui.components.AuthLottieHeader
 import com.example.whizzz.feature.auth.ui.components.AuthOutlinedField
 import com.example.whizzz.feature.auth.ui.components.FramedAuthButton
-import com.example.whizzz.feature.auth.R
 import com.example.whizzz.feature.auth.presentation.login.LoginUiEffect
 import com.example.whizzz.feature.auth.presentation.login.LoginUiEvent
 import com.example.whizzz.feature.auth.presentation.login.LoginUiState
@@ -63,7 +62,7 @@ import com.example.whizzz.feature.auth.presentation.login.LoginViewModel
 import kotlinx.coroutines.flow.collectLatest
 
 /**
- * Stateless login UI: form, Lottie header, links to register and forgot password.
+ * Stateless login UI: form, links to register and forgot password.
  *
  * @param state MVI [LoginUiState] from [LoginViewModel].
  * @param passwordVisible Whether the password field uses plain text or masking.
@@ -90,12 +89,13 @@ internal fun LoginScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .whizzzKeyboardInsetPadding()
                 .verticalScroll(rememberScrollState())
                 .imeNestedScroll()
                 .padding(horizontal = 20.dp),
         ) {
-            AuthLottieHeader(R.raw.login_back_ground)
+            Spacer(Modifier.height(32.dp))
             Text(
                 text = WhizzzStrings.Ui.HI_THERE,
                 color = MaterialTheme.colorScheme.onBackground,

@@ -25,24 +25,32 @@ class AppCheckInitProvider : ContentProvider() {
      */
     override fun onCreate(): Boolean {
         val ctx = context ?: return false
-        val appCheck = FirebaseAppCheck.getInstance()
-        val debuggable = (ctx.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        val usePlayIntegrity =
-            !BuildConfig.DEBUG &&
-                BuildConfig.USE_PLAY_INTEGRITY_APP_CHECK &&
-                !debuggable
-        Log.i(
-            TAG,
-            "buildType=${BuildConfig.BUILD_TYPE} DEBUG=${BuildConfig.DEBUG} USE_PLAY_INTEGRITY_APP_CHECK=${BuildConfig.USE_PLAY_INTEGRITY_APP_CHECK} debuggable=$debuggable → provider=${if (usePlayIntegrity) "PlayIntegrity" else "Debug"}",
-        )
-        if (usePlayIntegrity) {
-            appCheck.installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
-        } else {
+        try {
+            if (com.google.firebase.FirebaseApp.getApps(ctx).isEmpty()) {
+                Log.w(TAG, "FirebaseApp is not initialized; skipping AppCheck initialization")
+                return true
+            }
+            val appCheck = FirebaseAppCheck.getInstance()
+            val debuggable = (ctx.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            val usePlayIntegrity =
+                !BuildConfig.DEBUG &&
+                    BuildConfig.USE_PLAY_INTEGRITY_APP_CHECK &&
+                    !debuggable
             Log.i(
                 TAG,
-                "Using App Check debug provider: add the \"App Check debug token\" from logcat under Firebase Console → App Check → Android app → Manage debug tokens.",
+                "buildType=${BuildConfig.BUILD_TYPE} DEBUG=${BuildConfig.DEBUG} USE_PLAY_INTEGRITY_APP_CHECK=${BuildConfig.USE_PLAY_INTEGRITY_APP_CHECK} debuggable=$debuggable → provider=${if (usePlayIntegrity) "PlayIntegrity" else "Debug"}",
             )
-            appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
+            if (usePlayIntegrity) {
+                appCheck.installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+            } else {
+                Log.i(
+                    TAG,
+                    "Using App Check debug provider: add the \"App Check debug token\" from logcat under Firebase Console → App Check → Android app → Manage debug tokens.",
+                )
+                appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to initialize AppCheck", e)
         }
         return true
     }
