@@ -146,7 +146,14 @@ fun TriggerNavHost(modifier: Modifier = Modifier) {
             enterTransition = { peerProfileEnterTransition() },
             popExitTransition = { peerProfilePopExitTransition() },
         ) {
-            PeerProfileRoute(onBack = { navController.popBackStack() })
+            PeerProfileRoute(
+                onBack = { navController.popBackStack() },
+                onOpenChat = { peerId ->
+                    navController.navigate(TriggerRoutes.chat(peerId)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
     }
 }

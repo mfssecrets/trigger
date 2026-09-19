@@ -1,15 +1,19 @@
 package com.triggerapp.feature.profile.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,25 +21,37 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -44,7 +60,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -104,6 +119,19 @@ fun ProfileRoute(
     var showSignOutConfirmation by remember { mutableStateOf(false) }
     var showUsernameEditDialog by remember { mutableStateOf(false) }
     var tempUsernameEdit by remember { mutableStateOf("") }
+    var showEditProfileSheet by remember { mutableStateOf(false) }
+    var showFollowersSheet by remember { mutableStateOf(false) }
+    var showFollowingSheet by remember { mutableStateOf(false) }
+    val prefs = remember(context) {
+        context.getSharedPreferences("user_profile_prefs", android.content.Context.MODE_PRIVATE)
+    }
+    val userState = state.user
+    var customUsername by rememberSaveable(userState?.id) {
+        val emailPrefix = userState?.emailId?.substringBefore('@')?.ifBlank {
+            userState.username.lowercase().replace(" ", "_")
+        } ?: "user"
+        mutableStateOf(userState?.id?.let { prefs.getString("custom_username_$it", null) } ?: "@$emailPrefix")
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -287,12 +315,6 @@ fun ProfileRoute(
                 val emailPrefix = user.emailId.substringBefore('@').ifBlank {
                     user.username.lowercase().replace(" ", "_")
                 }
-                val prefs = remember(context) {
-                    context.getSharedPreferences("user_profile_prefs", android.content.Context.MODE_PRIVATE)
-                }
-                var customUsername by rememberSaveable(user.id) {
-                    mutableStateOf(prefs.getString("custom_username_${user.id}", null) ?: "@$emailPrefix")
-                }
 
                 Text(
                     text = user.username,
@@ -321,6 +343,128 @@ fun ProfileRoute(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 40.dp, vertical = 6.dp),
                 )
+
+                Spacer(Modifier.height(8.dp))
+
+                // Modern Instagram Following / Followers Stats Section
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    InstagramStatColumn(
+                        count = "12",
+                        label = "Posts",
+                        onClick = {},
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(Color(0xFF2E3845)),
+                    )
+                    InstagramStatColumn(
+                        count = "842",
+                        label = "Followers",
+                        onClick = { showFollowersSheet = true },
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(Color(0xFF2E3845)),
+                    )
+                    InstagramStatColumn(
+                        count = "419",
+                        label = "Following",
+                        onClick = { showFollowingSheet = true },
+                    )
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // Modern Instagram Action Buttons (Edit Profile & Share Profile)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Edit Profile Button
+                    Surface(
+                        onClick = { showEditProfileSheet = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF242C35),
+                        border = BorderStroke(1.dp, Color(0xFF384351)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "Edit profile",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+
+                    // Share Profile Button
+                    Surface(
+                        onClick = {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(
+                                    Intent.EXTRA_TEXT,
+                                    "Check out my profile on Trigger: $customUsername\nhttps://trigger.app/$customUsername",
+                                )
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share profile via"))
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF242C35),
+                        border = BorderStroke(1.dp, Color(0xFF384351)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "Share profile",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(18.dp))
                 TriggerProfileGroupedList(Modifier.padding(horizontal = 16.dp)) {
                     TriggerProfileDetailRow(
@@ -527,12 +671,327 @@ fun ProfileRoute(
         )
     }
 
+    if (showEditProfileSheet && state.user != null) {
+        val currentUser = state.user!!
+        OwnProfileEditBottomSheet(
+            currentUser = currentUser,
+            customUsername = customUsername,
+            onDismiss = { showEditProfileSheet = false },
+            onChangePhoto = {
+                showEditProfileSheet = false
+                viewModel.onEvent(ProfileUiEvent.OpenPhotoSourceSheet)
+            },
+            onSave = { newName, newUsername, newBio ->
+                val cleanUser = newUsername.trim().removePrefix("@")
+                if (cleanUser.isNotBlank()) {
+                    val prefs = context.getSharedPreferences("user_profile_prefs", android.content.Context.MODE_PRIVATE)
+                    prefs.edit().putString("custom_username_${currentUser.id}", "@$cleanUser").apply()
+                    customUsername = "@$cleanUser"
+                }
+                if (newName != currentUser.username && newName.isNotBlank()) {
+                    viewModel.onEvent(ProfileUiEvent.OpenUsernameDialog)
+                    viewModel.onEvent(ProfileUiEvent.DialogTextChanged(newName))
+                    viewModel.onEvent(ProfileUiEvent.SaveDialog)
+                }
+                if (newBio != currentUser.bio) {
+                    viewModel.onEvent(ProfileUiEvent.OpenBioDialog)
+                    viewModel.onEvent(ProfileUiEvent.DialogTextChanged(newBio))
+                    viewModel.onEvent(ProfileUiEvent.SaveDialog)
+                }
+                showEditProfileSheet = false
+            },
+        )
+    }
+
+    if (showFollowersSheet) {
+        OwnProfileConnectionsSheet(
+            title = "Followers (842)",
+            isFollowers = true,
+            onDismiss = { showFollowersSheet = false },
+        )
+    }
+
+    if (showFollowingSheet) {
+        OwnProfileConnectionsSheet(
+            title = "Following (419)",
+            isFollowers = false,
+            onDismiss = { showFollowingSheet = false },
+        )
+    }
+
     SnackbarHost(
         hostState = snackbarHostState,
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(16.dp),
     )
+    }
+}
+
+@Composable
+internal fun InstagramStatColumn(
+    count: String,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = count,
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = label,
+            color = TriggerProfileMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OwnProfileEditBottomSheet(
+    currentUser: User,
+    customUsername: String,
+    onDismiss: () -> Unit,
+    onChangePhoto: () -> Unit,
+    onSave: (newName: String, newUsername: String, newBio: String) -> Unit,
+) {
+    var name by remember { mutableStateOf(currentUser.username) }
+    var username by remember { mutableStateOf(customUsername.removePrefix("@")) }
+    var bio by remember { mutableStateOf(currentUser.bio) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1E252D),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel", color = Color(0xFFA0AEC0), fontSize = 15.sp)
+                }
+                Text(
+                    text = "Edit Profile",
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TextButton(
+                    onClick = { onSave(name, username, bio) },
+                ) {
+                    Text(
+                        text = "Done",
+                        color = Color(0xFF63FFA3),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Avatar and Change Photo
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onChangePhoto),
+            ) {
+                TriggerProfileAvatar(
+                    imageUrl = currentUser.imageUrl,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Change profile photo",
+                color = Color(0xFF63FFA3),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clickable(onClick = onChangePhoto)
+                    .padding(4.dp),
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // Fields
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color(0xFF63FFA3),
+                    unfocusedBorderColor = Color(0xFF384351),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' } },
+                label = { Text("Username") },
+                prefix = { Text("@", color = Color(0xFF63FFA3)) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color(0xFF63FFA3),
+                    unfocusedBorderColor = Color(0xFF384351),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = bio,
+                onValueChange = { bio = it },
+                label = { Text("Bio") },
+                maxLines = 3,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color(0xFF63FFA3),
+                    unfocusedBorderColor = Color(0xFF384351),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(28.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OwnProfileConnectionsSheet(
+    title: String,
+    isFollowers: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val connections = remember {
+        listOf(
+            Triple("Alex River", "@alex_river", "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200"),
+            Triple("Cleopatra Vance", "@cleopatra", "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200"),
+            Triple("Jordan Hayes", "@jordan_dev", "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200"),
+            Triple("Sam Coder", "@sam_coder", "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200"),
+            Triple("Maya Lin", "@maya_creative", "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200"),
+        )
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF1E252D),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(340.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(connections, key = { it.second }) { (name, handle, avatar) ->
+                    var isRemoved by remember { mutableStateOf(false) }
+                    var isFollowing by remember { mutableStateOf(true) }
+
+                    if (!isRemoved) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            TriggerProfileAvatar(
+                                imageUrl = avatar,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape),
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                Text(handle, color = Color(0xFF90A4AE), fontSize = 12.sp)
+                            }
+
+                            if (isFollowers) {
+                                Surface(
+                                    onClick = { isRemoved = true },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF2B3542),
+                                    modifier = Modifier.height(32.dp),
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                    ) {
+                                        Text("Remove", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                }
+                            } else {
+                                Surface(
+                                    onClick = { isFollowing = !isFollowing },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isFollowing) Color(0xFF2B3542) else Color(0xFF63FFA3),
+                                    modifier = Modifier.height(32.dp),
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(horizontal = 14.dp),
+                                    ) {
+                                        Text(
+                                            text = if (isFollowing) "Following" else "Follow",
+                                            color = if (isFollowing) Color.White else Color.Black,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }
 
