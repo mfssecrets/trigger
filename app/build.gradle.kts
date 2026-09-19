@@ -14,8 +14,8 @@ android {
     applicationId = "com.triggerapp.connect"
     minSdk = 26
     targetSdk = 35
-    versionCode = 3
-    versionName = "1.2"
+    versionCode = 4
+    versionName = "1.3"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     buildConfigField("boolean", "USE_PLAY_INTEGRITY_APP_CHECK", "false")

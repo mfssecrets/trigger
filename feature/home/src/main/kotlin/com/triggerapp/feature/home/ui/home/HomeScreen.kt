@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -184,6 +185,9 @@ internal fun HomeMainLayout(
             Surface(color = AppBarBlack) {
                 Row(
                     modifier = Modifier
+                        // Keep the header content below the system status bar while the
+                        // Surface background stays edge-to-edge black (fixes header underlay).
+                        .statusBarsPadding()
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
