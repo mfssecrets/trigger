@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -413,12 +414,21 @@ fun FeedPostCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (post.likedByAvatars.isNotEmpty()) {
-                        Row(modifier = Modifier.padding(end = 8.dp)) {
-                            post.likedByAvatars.take(3).forEachIndexed { index, avatarUrl ->
+                        val avatarSize = 18.dp
+                        val overlapOffset = 6.dp
+                        val avatars = post.likedByAvatars.take(3)
+                        val totalWidth = avatarSize + (overlapOffset * (avatars.size - 1))
+                        Box(
+                            modifier = Modifier
+                                .width(totalWidth)
+                                .height(avatarSize)
+                                .padding(end = 4.dp),
+                        ) {
+                            avatars.forEachIndexed { index, avatarUrl ->
                                 Box(
                                     modifier = Modifier
-                                        .padding(start = if (index > 0) (-6).dp else 0.dp)
-                                        .size(18.dp)
+                                        .offset(x = overlapOffset * index)
+                                        .size(avatarSize)
                                         .border(1.dp, CardBackground, CircleShape),
                                 ) {
                                     TriggerProfileAvatar(
