@@ -27,6 +27,7 @@ object TriggerStrings {
         const val ARG_OTP_PURPOSE = "otpPurpose"
         const val NEW_PASSWORD = "newPassword"
         const val EDIT_PROFILE = "editProfile"
+        const val VERIFY_PROFILE = "verifyProfile"
     }
 
     /**
@@ -60,6 +61,25 @@ object TriggerStrings {
         const val ABOUT = "About"
         const val PROFILE_PHOTO_HINT = "Tap your photo to add or change it."
         const val EDIT_PROFILE = "Edit profile"
+        const val VERIFY_PROFILE = "Account verification"
+        const val VERIFY_PROFILE_CTA = "Verify your face"
+        const val VERIFIED_BADGE = "Verified"
+        const val NOT_VERIFIED = "Not verified"
+        const val VERIFY_INTRO_TITLE = "Face verification"
+        const val VERIFY_INTRO_BODY =
+            "Confirm you are a real person. We look for your face on camera and check a quick blink and smile — nothing is uploaded; the check runs on your phone."
+        const val VERIFY_START = "Start verification"
+        const val VERIFY_REDO = "Re-verify"
+        const val VERIFY_PROMPT_CENTER = "Center your face in the circle"
+        const val VERIFY_PROMPT_BLINK = "Now blink once"
+        const val VERIFY_PROMPT_SMILE = "Great — now smile"
+        const val VERIFY_ANALYZING = "Checking…"
+        const val VERIFY_SUCCESS_TITLE = "You're verified!"
+        const val VERIFY_SUCCESS_BODY = "Your profile now shows the verified badge."
+        const val VERIFY_DETECTED_GENDER = "Detected"
+        const val VERIFY_MULTIPLE_FACES = "Make sure you are alone in the frame."
+        const val VERIFY_DONE = "Done"
+        const val VERIFY_STATUS_VERIFIED = "Face verified on-device"
         const val GENDER = "Gender"
         const val DATE_OF_BIRTH = "Date of birth"
         const val DOB_HINT = "DD/MM/YYYY"
@@ -208,6 +228,12 @@ object TriggerStrings {
             "You're offline. Connect to the internet to save changes."
         const val PROFILE_PHOTO_OFFLINE =
             "You're offline. Connect to the internet to update your photo."
+        const val VERIFICATION_FAILED =
+            "Couldn't confirm your face this time. Find even lighting and try again."
+        const val VERIFICATION_SAVE_FAILED =
+            "Face check passed, but saving the result failed. Check your connection and try again."
+        const val VERIFICATION_CAMERA_FAILED =
+            "Couldn't open the camera. Close other camera apps and try again."
     }
 
     /**
@@ -262,6 +288,11 @@ object TriggerStrings {
         const val CHILD_DISPLAY_NAME = "displayName"
         const val CHILD_GENDER = "gender"
         const val CHILD_DOB = "dob"
+        const val NODE_VERIFICATION = "verification"
+        const val CHILD_FACE_VERIFIED = "faceVerified"
+        const val CHILD_DETECTED_GENDER = "gender"
+        const val CHILD_CONFIDENCE = "confidence"
+        const val CHILD_VERIFIED_AT = "verifiedAt"
 
         const val ORDER_BY_USERNAME = "username"
         const val ORDER_BY_SEARCH = "search"

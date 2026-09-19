@@ -114,7 +114,6 @@ private val TabActive = Color(0xFF63FFA3)
 
 private enum class HeaderMenuDialog {
     None,
-    Verification,
     Settings,
     MySite,
     Wallet,
@@ -141,6 +140,7 @@ internal fun HomeMainLayout(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     currentUser: User?,
+    onOpenVerification: () -> Unit = {},
     tab0: @Composable () -> Unit,
     tab1: @Composable () -> Unit,
     tab2: @Composable () -> Unit,
@@ -290,7 +290,7 @@ internal fun HomeMainLayout(
                                 },
                                 onClick = {
                                     showMenu = false
-                                    activeMenuDialog = HeaderMenuDialog.Verification
+                                    onOpenVerification()
                                 },
                             )
                             DropdownMenuItem(
@@ -388,54 +388,6 @@ internal fun HomeMainLayout(
     }
 
     when (activeMenuDialog) {
-        HeaderMenuDialog.Verification -> {
-            AlertDialog(
-                onDismissRequest = { activeMenuDialog = HeaderMenuDialog.None },
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Verified, contentDescription = null, tint = TabActive)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Account Verification", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Get the verified badge next to your profile handle.", color = Color(0xFFCFD8DC), fontSize = 14.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✓", color = TabActive, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Email Address Confirmed", color = Color.White, fontSize = 13.sp)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✓", color = TabActive, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Realtime Presence Active", color = Color.White, fontSize = 13.sp)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("○", color = Color(0xFFFFD54F), fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Identity Badge: Ready to Submit", color = Color.White, fontSize = 13.sp)
-                        }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = { activeMenuDialog = HeaderMenuDialog.None },
-                        colors = ButtonDefaults.buttonColors(containerColor = TabActive, contentColor = Color.Black),
-                    ) {
-                        Text("Request Badge", fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { activeMenuDialog = HeaderMenuDialog.None }) {
-                        Text("Close", color = Color.White)
-                    }
-                },
-                containerColor = Color(0xFF1E242B),
-                shape = RoundedCornerShape(16.dp),
-            )
-        }
         HeaderMenuDialog.Settings -> {
             AlertDialog(
                 onDismissRequest = { activeMenuDialog = HeaderMenuDialog.None },
@@ -611,6 +563,7 @@ fun HomeRoute(
     onSignOut: () -> Unit,
     onOpenChat: (String) -> Unit,
     onOpenEditProfile: () -> Unit = {},
+    onOpenVerification: () -> Unit = {},
     homeViewModel: HomeViewModel = koinViewModel(),
 ) {
     LaunchedEffect(Unit) {
@@ -627,6 +580,7 @@ fun HomeRoute(
         selectedTabIndex = tabIndex,
         onTabSelected = { tabIndex = it },
         currentUser = homeState.currentUser,
+        onOpenVerification = onOpenVerification,
         tab0 = { ConversationsTab(onOpenChat = onOpenChat) },
         tab1 = { FeedsTab(currentUser = homeState.currentUser, onOpenChat = onOpenChat) },
         tab2 = { NotificationsTab() },
@@ -638,6 +592,7 @@ fun HomeRoute(
                     onSignOut()
                 },
                 onOpenEditProfile = onOpenEditProfile,
+                onOpenVerification = onOpenVerification,
             )
         },
     )

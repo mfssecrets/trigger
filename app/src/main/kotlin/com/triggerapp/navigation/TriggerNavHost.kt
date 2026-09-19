@@ -20,6 +20,7 @@ import com.triggerapp.feature.chat.ui.ConversationRoute
 import com.triggerapp.feature.chat.ui.PeerProfileRoute
 import com.triggerapp.feature.home.ui.home.HomeRoute
 import com.triggerapp.feature.profile.ui.EditProfileRoute
+import com.triggerapp.feature.profile.ui.VerificationRoute
 import com.triggerapp.presence.AppProcessPresenceEffect
 import com.triggerapp.splash.SplashRoute
 
@@ -123,10 +124,18 @@ fun TriggerNavHost(modifier: Modifier = Modifier) {
                 onOpenEditProfile = {
                     navController.navigate(TriggerRoutes.EDIT_PROFILE) { launchSingleTop = true }
                 },
+                onOpenVerification = {
+                    navController.navigate(TriggerRoutes.VERIFY_PROFILE) { launchSingleTop = true }
+                },
             )
         }
         composable(TriggerRoutes.EDIT_PROFILE) {
             EditProfileRoute(
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(TriggerRoutes.VERIFY_PROFILE) {
+            VerificationRoute(
                 onBack = { navController.popBackStack() },
             )
         }

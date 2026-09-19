@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -99,6 +100,7 @@ private val LogOutAccent = Color(0xFFFF5252)
 fun ProfileRoute(
     onSignOut: () -> Unit = {},
     onOpenEditProfile: () -> Unit = {},
+    onOpenVerification: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -279,6 +281,26 @@ fun ProfileRoute(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp),
                 )
+                if (user.isFaceVerified) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 4.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Verified,
+                            contentDescription = TriggerStrings.Ui.VERIFIED_BADGE,
+                            tint = Color(0xFF63FFA3),
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = TriggerStrings.Ui.VERIFIED_BADGE,
+                            color = Color(0xFF63FFA3),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
                 Text(
                     text = profileHandle,
                     color = Color(0xFF63FFA3),
@@ -402,6 +424,17 @@ fun ProfileRoute(
                             valueMaxLines = 2,
                         )
                     }
+                    TriggerProfileGroupedDivider()
+                    TriggerProfileDetailRow(
+                        label = TriggerStrings.Ui.VERIFY_PROFILE,
+                        value = if (user.isFaceVerified) {
+                            TriggerStrings.Ui.VERIFY_STATUS_VERIFIED
+                        } else {
+                            TriggerStrings.Ui.VERIFY_PROFILE_CTA
+                        },
+                        onClick = onOpenVerification,
+                        showChevron = true,
+                    )
                 }
                 state.error?.let { err ->
                     Text(

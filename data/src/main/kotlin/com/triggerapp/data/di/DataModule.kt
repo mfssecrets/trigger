@@ -39,6 +39,7 @@ import com.triggerapp.domain.usecase.auth.CheckUsernameAvailabilityUseCase
 import com.triggerapp.domain.usecase.auth.ResetPasswordWithOtpUseCase
 import com.triggerapp.domain.usecase.auth.VerifyOtpUseCase
 import com.triggerapp.domain.usecase.user.ObserveCurrentUserUseCase
+import com.triggerapp.domain.usecase.user.SaveFaceVerificationUseCase
 import com.triggerapp.domain.usecase.user.UpdateBioUseCase
 import com.triggerapp.domain.usecase.user.UpdateProfileFieldsUseCase
 import com.triggerapp.domain.usecase.user.UpdateUsernameUseCase
@@ -82,6 +83,7 @@ val dataModule = module {
     factoryOf(::UpdateUsernameUseCase)
     factoryOf(::UpdateBioUseCase)
     factoryOf(::UpdateProfileFieldsUseCase)
+    factoryOf(::SaveFaceVerificationUseCase)
     factoryOf(::UploadProfileImageUseCase)
     factoryOf(::ObserveNetworkOnlineUseCase)
     factoryOf(::RegisterPushTokenUseCase)

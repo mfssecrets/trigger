@@ -474,6 +474,31 @@ class UserRepositoryImpl(
     }
 
     /**
+     * Writes the on-device face-verification result in one multi-path update so the
+     * `verification` node lands atomically (server timestamp from the backend clock).
+     *
+     *
+     * @param gender Classifier label (`"male"` / `"female"`).
+     * @param confidence Classifier confidence in `[0,1]`.
+     * @return [Result] success when written.
+     * @author udit
+     */
+    override suspend fun saveFaceVerification(gender: String, confidence: Double): Result<Unit> =
+        runCatching {
+            val uid = auth.currentUser?.uid ?: error(TriggerStrings.Errors.NOT_SIGNED_IN)
+            val node = TriggerStrings.Db.NODE_VERIFICATION
+            usersRef.child(uid).updateChildren(
+                mapOf(
+                    "$node/${TriggerStrings.Db.CHILD_FACE_VERIFIED}" to true,
+                    "$node/${TriggerStrings.Db.CHILD_DETECTED_GENDER}" to gender,
+                    "$node/${TriggerStrings.Db.CHILD_CONFIDENCE}" to confidence,
+                    "$node/${TriggerStrings.Db.CHILD_VERIFIED_AT}" to ServerValue.TIMESTAMP,
+                ),
+            ).await()
+            Unit
+        }
+
+    /**
      * Sets `imageUrl` (HTTPS or data URI) for the signed-in user.
      *
      *

@@ -121,6 +121,17 @@ interface UserRepository {
     suspend fun updateProfileFields(fields: Map<String, String>): Result<Unit>
 
     /**
+     * Persists the on-device face-verification result for the signed-in user under
+     * `Users/{uid}/verification` (faceVerified / gender / confidence / verifiedAt).
+     *
+     * @param gender Classifier label (`"male"` / `"female"`).
+     * @param confidence Classifier confidence in `[0,1]`.
+     * @return [Result] success when written.
+     * @author udit
+     */
+    suspend fun saveFaceVerification(gender: String, confidence: Double): Result<Unit>
+
+    /**
      * Persists profile image reference (HTTPS URL, or `data:image/...;base64,...` when using RTDB-only avatars).
      *
      * @param url Image URL or data URI string.

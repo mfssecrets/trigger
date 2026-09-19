@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Verified
@@ -211,7 +212,7 @@ internal fun PeerProfileScreenContent(
 
                         Spacer(Modifier.height(10.dp))
 
-                        // Username & Badge
+                        // Username & Badge (badge shown only for face-verified users)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
@@ -225,13 +226,15 @@ internal fun PeerProfileScreenContent(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Spacer(Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.Outlined.Verified,
-                                contentDescription = "Verified",
-                                tint = TriggerAccent,
-                                modifier = Modifier.size(18.dp),
-                            )
+                            if (u.isFaceVerified) {
+                                Spacer(Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Filled.Verified,
+                                    contentDescription = "Verified",
+                                    tint = TriggerAccent,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
                         }
 
                         Text(
