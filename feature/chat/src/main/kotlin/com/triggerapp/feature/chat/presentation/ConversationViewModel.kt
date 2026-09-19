@@ -143,6 +143,7 @@ class ConversationViewModel(
         when (event) {
             is ConversationUiEvent.DraftChanged -> _draft.value = event.value
             ConversationUiEvent.Send -> send()
+            is ConversationUiEvent.SendDirect -> sendDirect(event.message)
             ConversationUiEvent.DismissStreamError -> {
                 _streamError.value = null
             }
@@ -154,6 +155,28 @@ class ConversationViewModel(
                 _sendError.value = null
             }
             ConversationUiEvent.MarkPeerSeen -> markPeerMessagesSeenInternal()
+        }
+    }
+
+    private fun sendDirect(text: String) {
+        viewModelScope.launch {
+            val uid = state.value.myUserId ?: return@launch
+            if (text.isBlank()) return@launch
+            if (!isOnlineFlow.value) {
+                _sendError.value = TriggerStrings.Errors.MESSAGE_SEND_FAILED
+                return@launch
+            }
+            val ts = System.currentTimeMillis().toString()
+            sendConversationMessage(peerId, uid, text, ts)
+                .onSuccess {
+                    _sendError.value = null
+                }
+                .onFailure { e ->
+                    _sendError.value = e.userFacingMessage(
+                        offlineFallback = TriggerStrings.Errors.MESSAGE_SEND_FAILED,
+                        genericFallback = TriggerStrings.Errors.MESSAGE_SEND_FAILED,
+                    )
+                }
         }
     }
 

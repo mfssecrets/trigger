@@ -31,6 +31,7 @@ data class ConversationUiState(
 sealed interface ConversationUiEvent {
     data class DraftChanged(val value: String) : ConversationUiEvent
     data object Send : ConversationUiEvent
+    data class SendDirect(val message: String) : ConversationUiEvent
     data object DismissStreamError : ConversationUiEvent
     data object RetryStreams : ConversationUiEvent
     data object ClearSendError : ConversationUiEvent
