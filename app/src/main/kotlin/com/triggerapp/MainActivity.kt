@@ -2,10 +2,12 @@ package com.triggerapp
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -29,7 +31,15 @@ class MainActivity : ComponentActivity() {
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
-        enableEdgeToEdge()
+        // The app UI is forced dark (TriggerTheme darkTheme = true, black app bars), so status
+        // bar icons must always be light. The default enableEdgeToEdge() style is "auto", which
+        // follows the SYSTEM light/dark mode: on devices set to light mode it produced dark
+        // icons over the black dashboard header (invisible clock/battery). SystemBarStyle.dark
+        // pins light icons regardless of system theme — same pattern as TriggerProfileCropActivity.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         requestNotificationPermissionIfNeeded()
         splashScreen.setKeepOnScreenCondition { splashViewModel.keepSplashScreen.value }
