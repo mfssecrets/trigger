@@ -3,16 +3,13 @@ package com.triggerapp.feature.profile.presentation
 import com.triggerapp.domain.model.User
 
 /**
- * UI snapshot for viewing and editing the current profile.
+ * UI snapshot for viewing the current profile and driving the photo flows.
  *
  *
  * @property user Loaded profile, or null while loading or on hard failure.
  * @property initialProfilePending True until the first value is received from the profile stream.
  * @property profileLoadError User-visible error when the profile stream fails (for example offline).
- * @property loading True while saving dialog changes.
- * @property dialog Which edit dialog is open, if any.
- * @property dialogText Bound text for the active dialog field.
- * @property error Validation or save error for the dialog.
+ * @property error Error shown on the profile screen (photo upload failures); cleared on next action.
  * @property photoUploading True while a new avatar upload is in progress.
  * @property photoViewerVisible Fullscreen avatar preview overlay.
  * @property photoSourceSheetVisible Bottom sheet for gallery vs camera.
@@ -22,9 +19,6 @@ data class ProfileUiState(
     val user: User? = null,
     val initialProfilePending: Boolean = true,
     val profileLoadError: String? = null,
-    val loading: Boolean = false,
-    val dialog: ProfileDialog = ProfileDialog.None,
-    val dialogText: String = "",
     val error: String? = null,
     val photoUploading: Boolean = false,
     val photoViewerVisible: Boolean = false,
@@ -32,57 +26,16 @@ data class ProfileUiState(
 )
 
 /**
- * Which profile edit surface is shown as a modal dialog.
- * @author udit
- */
-sealed interface ProfileDialog {
-    data object None : ProfileDialog
-    data object Username : ProfileDialog
-    data object Bio : ProfileDialog
-}
-
-/**
  * User and system events for the profile screen.
  * @author udit
  */
 sealed interface ProfileUiEvent {
     data object RetryLoadProfile : ProfileUiEvent
-    data object OpenUsernameDialog : ProfileUiEvent
-    data object OpenBioDialog : ProfileUiEvent
     data object OpenPhotoViewer : ProfileUiEvent
     data object ClosePhotoViewer : ProfileUiEvent
     data object EditPhotoFromViewer : ProfileUiEvent
     data object OpenPhotoSourceSheet : ProfileUiEvent
     data object ClosePhotoSourceSheet : ProfileUiEvent
-    data object DismissDialog : ProfileUiEvent
-
-    /**
-     * Text changed in the open dialog.
-     *
-     *
-     * @property value Latest draft text.
-     * @author udit
-     */
-    data class DialogTextChanged(val value: String) : ProfileUiEvent
-    data object SaveDialog : ProfileUiEvent
-
-    /**
-     * Direct username save (no dialog): used by the Edit Profile bottom sheet.
-     *
-     *
-     * @property value New username (server validates and re-claims the unique handle).
-     * @author udit
-     */
-    data class SaveProfileName(val value: String) : ProfileUiEvent
-
-    /**
-     * Direct bio save (no dialog): used by the Edit Profile bottom sheet.
-     *
-     *
-     * @property value New bio text.
-     * @author udit
-     */
-    data class SaveProfileBio(val value: String) : ProfileUiEvent
 
     /**
      * JPEG bytes chosen after crop, ready for upload.

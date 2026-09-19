@@ -111,6 +111,16 @@ interface UserRepository {
     suspend fun updateBio(bio: String): Result<Unit>
 
     /**
+     * Writes simple profile fields (display name, gender, date of birth) as top-level children on
+     * the signed-in user node in one multi-path update.
+     *
+     * @param fields Child-name to value map (e.g. `displayName`, `gender`, `dob`).
+     * @return [Result] success when updated.
+     * @author udit
+     */
+    suspend fun updateProfileFields(fields: Map<String, String>): Result<Unit>
+
+    /**
      * Persists profile image reference (HTTPS URL, or `data:image/...;base64,...` when using RTDB-only avatars).
      *
      * @param url Image URL or data URI string.

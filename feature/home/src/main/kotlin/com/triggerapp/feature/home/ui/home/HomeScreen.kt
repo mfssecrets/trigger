@@ -610,6 +610,7 @@ internal fun HomeMainLayout(
 fun HomeRoute(
     onSignOut: () -> Unit,
     onOpenChat: (String) -> Unit,
+    onOpenEditProfile: () -> Unit = {},
     homeViewModel: HomeViewModel = koinViewModel(),
 ) {
     LaunchedEffect(Unit) {
@@ -636,6 +637,7 @@ fun HomeRoute(
                     homeViewModel.onEvent(HomeUiEvent.SignOut)
                     onSignOut()
                 },
+                onOpenEditProfile = onOpenEditProfile,
             )
         },
     )

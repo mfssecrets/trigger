@@ -460,6 +460,20 @@ class UserRepositoryImpl(
     }
 
     /**
+     * Writes simple profile fields (display name, gender, dob) in one multi-path update.
+     *
+     *
+     * @param fields Child-name to value map (client-writable children only).
+     * @return [Result] success when written.
+     * @author udit
+     */
+    override suspend fun updateProfileFields(fields: Map<String, String>): Result<Unit> = runCatching {
+        val uid = auth.currentUser?.uid ?: error(TriggerStrings.Errors.NOT_SIGNED_IN)
+        usersRef.child(uid).updateChildren(fields).await()
+        Unit
+    }
+
+    /**
      * Sets `imageUrl` (HTTPS or data URI) for the signed-in user.
      *
      *

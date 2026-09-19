@@ -39,9 +39,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -77,14 +74,12 @@ import com.triggerapp.core.ui.TriggerProfileGroupedList
 import com.triggerapp.core.ui.TriggerProfileMuted
 import com.triggerapp.core.ui.theme.TriggerScreenBackground
 import com.triggerapp.core.ui.theme.TriggerTheme
-import com.triggerapp.core.ui.triggerKeyboardInsetPadding
 import com.triggerapp.domain.model.User
 import com.triggerapp.domain.text.DisplayTextLimits
 import com.triggerapp.feature.profile.crop.ProfilePhotoCropContract
 import com.triggerapp.feature.profile.crop.createProfileCameraImageUri
 import com.triggerapp.feature.profile.crop.jpegBytesForProfileUpload
 import com.triggerapp.feature.profile.crop.profilePhotoCropOptions
-import com.triggerapp.feature.profile.presentation.ProfileDialog
 import com.triggerapp.feature.profile.presentation.ProfileUiEvent
 import com.triggerapp.feature.profile.presentation.ProfileViewModel
 import kotlinx.coroutines.Dispatchers
@@ -103,6 +98,7 @@ private val LogOutAccent = Color(0xFFFF5252)
 @Composable
 fun ProfileRoute(
     onSignOut: () -> Unit = {},
+    onOpenEditProfile: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -111,14 +107,12 @@ fun ProfileRoute(
     var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     var showSignOutConfirmation by remember { mutableStateOf(false) }
-    var showEditProfileSheet by remember { mutableStateOf(false) }
     val userState = state.user
 
     DisposableEffect(Unit) {
         onDispose {
             viewModel.onEvent(ProfileUiEvent.ClosePhotoViewer)
             viewModel.onEvent(ProfileUiEvent.ClosePhotoSourceSheet)
-            viewModel.onEvent(ProfileUiEvent.DismissDialog)
         }
     }
 
@@ -165,28 +159,6 @@ fun ProfileRoute(
                 }
             }
         }
-    }
-
-    when (state.dialog) {
-        ProfileDialog.Username -> EditDialog(
-            title = TriggerStrings.Ui.EDIT_USERNAME,
-            text = state.dialogText,
-            errorText = state.error,
-            onTextChange = { viewModel.onEvent(ProfileUiEvent.DialogTextChanged(it)) },
-            onDismiss = { viewModel.onEvent(ProfileUiEvent.DismissDialog) },
-            onSave = { viewModel.onEvent(ProfileUiEvent.SaveDialog) },
-            loading = state.loading,
-        )
-        ProfileDialog.Bio -> EditDialog(
-            title = TriggerStrings.Ui.EDIT_BIO,
-            text = state.dialogText,
-            errorText = state.error,
-            onTextChange = { viewModel.onEvent(ProfileUiEvent.DialogTextChanged(it)) },
-            onDismiss = { viewModel.onEvent(ProfileUiEvent.DismissDialog) },
-            onSave = { viewModel.onEvent(ProfileUiEvent.SaveDialog) },
-            loading = state.loading,
-        )
-        ProfileDialog.None -> Unit
     }
 
     Box(
@@ -296,7 +268,7 @@ fun ProfileRoute(
                 val profileHandle = "@" + user.username.lowercase()
 
                 Text(
-                    text = user.username,
+                    text = user.effectiveDisplayName,
                     color = Color.White,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -335,7 +307,7 @@ fun ProfileRoute(
                 ) {
                     // Edit Profile Button
                     Surface(
-                        onClick = { showEditProfileSheet = true },
+                        onClick = onOpenEditProfile,
                         shape = RoundedCornerShape(8.dp),
                         color = Color(0xFF242C35),
                         border = BorderStroke(1.dp, Color(0xFF384351)),
@@ -409,8 +381,8 @@ fun ProfileRoute(
                 TriggerProfileGroupedList(Modifier.padding(horizontal = 16.dp)) {
                     TriggerProfileDetailRow(
                         label = "Name",
-                        value = user.username,
-                        onClick = { viewModel.onEvent(ProfileUiEvent.OpenUsernameDialog) },
+                        value = user.effectiveDisplayName,
+                        onClick = onOpenEditProfile,
                         showChevron = true,
                         valueMaxLines = 2,
                     )
@@ -418,7 +390,7 @@ fun ProfileRoute(
                     TriggerProfileDetailRow(
                         label = TriggerStrings.Ui.ABOUT,
                         value = user.bio.ifBlank { TriggerStrings.Defaults.NEW_USER_BIO },
-                        onClick = { viewModel.onEvent(ProfileUiEvent.OpenBioDialog) },
+                        onClick = onOpenEditProfile,
                         showChevron = true,
                         valueMaxLines = DisplayTextLimits.MAX_BIO_LINES,
                     )
@@ -536,245 +508,12 @@ fun ProfileRoute(
         )
     }
 
-    if (showEditProfileSheet && state.user != null) {
-        val currentUser = state.user!!
-        OwnProfileEditBottomSheet(
-            currentUser = currentUser,
-            onDismiss = { showEditProfileSheet = false },
-            onChangePhoto = {
-                showEditProfileSheet = false
-                viewModel.onEvent(ProfileUiEvent.OpenPhotoSourceSheet)
-            },
-            onSave = { newName, newBio ->
-                if (newName != currentUser.username && newName.isNotBlank()) {
-                    viewModel.onEvent(ProfileUiEvent.SaveProfileName(newName))
-                }
-                if (newBio != currentUser.bio) {
-                    viewModel.onEvent(ProfileUiEvent.SaveProfileBio(newBio))
-                }
-                showEditProfileSheet = false
-            },
-        )
-    }
-
     SnackbarHost(
         hostState = snackbarHostState,
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(16.dp),
     )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun OwnProfileEditBottomSheet(
-    currentUser: User,
-    onDismiss: () -> Unit,
-    onChangePhoto: () -> Unit,
-    onSave: (newName: String, newBio: String) -> Unit,
-) {
-    var name by remember { mutableStateOf(currentUser.username) }
-    var bio by remember { mutableStateOf(currentUser.bio) }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E252D),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel", color = Color(0xFFA0AEC0), fontSize = 15.sp)
-                }
-                Text(
-                    text = "Edit Profile",
-                    color = Color.White,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                TextButton(
-                    onClick = { onSave(name, bio) },
-                ) {
-                    Text(
-                        text = "Done",
-                        color = Color(0xFF63FFA3),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            // Avatar and Change Photo
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onChangePhoto),
-            ) {
-                TriggerProfileAvatar(
-                    imageUrl = currentUser.imageUrl,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "Change profile photo",
-                color = Color(0xFF63FFA3),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .clickable(onClick = onChangePhoto)
-                    .padding(4.dp),
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            // Fields
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Name") },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF63FFA3),
-                    unfocusedBorderColor = Color(0xFF384351),
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            OutlinedTextField(
-                value = bio,
-                onValueChange = { bio = it },
-                label = { Text("Bio") },
-                maxLines = 3,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF63FFA3),
-                    unfocusedBorderColor = Color(0xFF384351),
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            Spacer(Modifier.height(28.dp))
-        }
-    }
-}
-
-/**
- * Material [AlertDialog] for editing username or bio with validation hints.
- *
- * @param title Dialog title (used to infer username vs bio behavior).
- * @param text Current field text.
- * @param errorText Optional error under the field.
- * @param onTextChange Called when the user edits text.
- * @param onDismiss Closes without saving.
- * @param onSave Persists via the ViewModel.
- * @param loading Disables confirm while a save is running.
- * @author udit
- */
-@Composable
-private fun EditDialog(
-    title: String,
-    text: String,
-    errorText: String?,
-    onTextChange: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit,
-    loading: Boolean,
-) {
-    val dialogScroll = rememberScrollState()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.triggerKeyboardInsetPadding(),
-        title = { Text(title) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(dialogScroll),
-            ) {
-                val isBio = title == TriggerStrings.Ui.EDIT_BIO
-                val isUsername = title == TriggerStrings.Ui.EDIT_USERNAME
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = onTextChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = !isBio,
-                    minLines = if (isBio) 3 else 1,
-                    maxLines = if (isBio) DisplayTextLimits.MAX_BIO_LINES else 1,
-                    isError = errorText != null,
-                    supportingText =
-                        if (isBio || isUsername) {
-                            {
-                                val maxChars =
-                                    if (isBio) DisplayTextLimits.MAX_BIO_CHARS
-                                    else DisplayTextLimits.MAX_USERNAME_CHARS
-                                Text(
-                                    text = "${text.length}/$maxChars",
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                )
-                errorText?.let { err ->
-                    Text(
-                        text = err,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = onSave, enabled = !loading) {
-                Text(TriggerStrings.Ui.SAVE)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(TriggerStrings.Ui.BACK)
-            }
-        },
-    )
-}
-
-/**
- * Compose preview for [EditDialog] in username mode.
- * @author udit
- */
-@Preview(showBackground = true, showSystemUi = false, name = "Profile · edit username dialog")
-@Composable
-private fun EditDialogUsernamePreview() {
-    TriggerTheme(darkTheme = true, dynamicColor = false, useBrandDarkColors = true) {
-        EditDialog(
-            title = TriggerStrings.Ui.EDIT_USERNAME,
-            text = "Alex",
-            errorText = null,
-            onTextChange = {},
-            onDismiss = {},
-            onSave = {},
-            loading = false,
-        )
     }
 }
 

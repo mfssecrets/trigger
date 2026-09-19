@@ -26,6 +26,7 @@ object TriggerStrings {
         const val ARG_OTP_EMAIL = "otpEmail"
         const val ARG_OTP_PURPOSE = "otpPurpose"
         const val NEW_PASSWORD = "newPassword"
+        const val EDIT_PROFILE = "editProfile"
     }
 
     /**
@@ -58,6 +59,14 @@ object TriggerStrings {
         const val BIO = "Bio"
         const val ABOUT = "About"
         const val PROFILE_PHOTO_HINT = "Tap your photo to add or change it."
+        const val EDIT_PROFILE = "Edit profile"
+        const val GENDER = "Gender"
+        const val DATE_OF_BIRTH = "Date of birth"
+        const val DOB_HINT = "DD/MM/YYYY"
+        const val GENDER_MALE = "Male"
+        const val GENDER_FEMALE = "Female"
+        const val GENDER_OTHER = "Other"
+        const val GENDER_UNDISCLOSED = "Prefer not to say"
         const val PROFILE_PHOTO_VIEW_HINT = "Tap the photo to view it."
         const val SAVE = "Save"
         const val EDIT_USERNAME = "Edit username"
@@ -126,6 +135,7 @@ object TriggerStrings {
         const val ENTER_EMAIL = "Enter your email."
         const val REQUEST_FAILED = "Request failed."
         const val UPDATE_FAILED = "Update failed."
+        const val INVALID_DOB = "Enter a valid date of birth (DD/MM/YYYY)"
         const val UPLOAD_FAILED = "Upload failed."
         const val NOT_SIGNED_IN = "Not signed in"
         const val NO_UID_AFTER_SIGNUP = "No UID after sign-up"
@@ -249,6 +259,9 @@ object TriggerStrings {
         const val CHILD_SEEN = "seen"
         const val CHILD_TOKEN = "token"
         const val CHILD_LAST_SEEN = "lastSeen"
+        const val CHILD_DISPLAY_NAME = "displayName"
+        const val CHILD_GENDER = "gender"
+        const val CHILD_DOB = "dob"
 
         const val ORDER_BY_USERNAME = "username"
         const val ORDER_BY_SEARCH = "search"
