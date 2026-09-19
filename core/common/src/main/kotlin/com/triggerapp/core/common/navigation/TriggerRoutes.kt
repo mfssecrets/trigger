@@ -11,6 +11,8 @@ object TriggerRoutes {
     const val LOGIN = TriggerStrings.Nav.LOGIN
     const val REGISTER = TriggerStrings.Nav.REGISTER
     const val FORGOT = TriggerStrings.Nav.FORGOT
+    const val OTP = TriggerStrings.Nav.OTP
+    const val NEW_PASSWORD = TriggerStrings.Nav.NEW_PASSWORD
     const val HOME = TriggerStrings.Nav.HOME
     const val CHAT_PATTERN = TriggerStrings.Nav.CHAT_PATTERN
     const val PEER_PROFILE_PATTERN = TriggerStrings.Nav.PEER_PROFILE_PATTERN

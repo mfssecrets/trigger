@@ -1,13 +1,35 @@
 package com.triggerapp.feature.auth.presentation.register
 
 /**
+ * Server-check state of the chosen username (handle).
+ * @author udit
+ */
+enum class UsernameStatus {
+    /** No input yet — show the format hint. */
+    IDLE,
+
+    /** Input invalid for server check (too short or bad characters). */
+    INVALID,
+
+    /** Debounced backend availability check in flight. */
+    CHECKING,
+
+    /** Backend registry says the handle is free — blue tick. */
+    AVAILABLE,
+
+    /** Backend registry says the handle is claimed. */
+    TAKEN,
+}
+
+/**
  * UI snapshot during sign-up (MVI state).
  *
- * @property username Chosen display name input.
+ * @property username Chosen username (unique handle) input.
  * @property email Account email input.
  * @property password Password input.
- * @property loading True while sign-up is in progress.
+ * @property loading True while a validation round-trip is in progress.
  * @property errorMessage Validation or server error text, if any.
+ * @property usernameStatus Live availability status for the username field.
  * @author udit
  */
 data class RegisterUiState(
@@ -16,6 +38,7 @@ data class RegisterUiState(
     val password: String = "",
     val loading: Boolean = false,
     val errorMessage: String? = null,
+    val usernameStatus: UsernameStatus = UsernameStatus.IDLE,
 )
 
 /**
@@ -54,7 +77,7 @@ sealed interface RegisterUiEvent {
     data object Submit : RegisterUiEvent
 
     /**
-     * Clears fields after successful sign-up (for example after autofill commit).
+     * Clears fields after the flow completes.
      * @author udit
      */
     data object ClearForm : RegisterUiEvent
@@ -66,8 +89,8 @@ sealed interface RegisterUiEvent {
  */
 sealed interface RegisterUiEffect {
     /**
-     * Navigate to the home shell after successful registration.
+     * Inputs accepted — continue to the 6-digit email verification screen.
      * @author udit
      */
-    data object NavigateHome : RegisterUiEffect
+    data object NavigateOtp : RegisterUiEffect
 }

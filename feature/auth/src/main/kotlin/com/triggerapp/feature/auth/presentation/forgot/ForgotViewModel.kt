@@ -2,34 +2,36 @@ package com.triggerapp.feature.auth.presentation.forgot
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.triggerapp.core.common.errors.userFacingMessage
 import com.triggerapp.core.strings.TriggerStrings
-import com.triggerapp.domain.usecase.auth.SendPasswordResetUseCase
+import com.triggerapp.domain.text.DisplayTextLimits
 import com.triggerapp.domain.usecase.connectivity.ObserveNetworkOnlineUseCase
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * MVI [ViewModel] for password reset email flow.
- * Depends on domain use cases only (Clean Architecture).
+ * MVI [ViewModel] for the forgot-password entry form. Validates the email shape and hands the
+ * flow to the shared 6-digit code screen (which emails the code and enforces cooldowns).
  *
- * @param sendPasswordResetUseCase Triggers reset email through the domain layer.
- * @param observeNetworkOnline Connectivity [kotlinx.coroutines.flow.StateFlow]; blocks request when offline.
+ * @param observeNetworkOnline Connectivity [kotlinx.coroutines.flow.StateFlow]; blocks continue when offline.
  * @author udit
  */
 class ForgotViewModel(
-    private val sendPasswordResetUseCase: SendPasswordResetUseCase,
     private val observeNetworkOnline: ObserveNetworkOnlineUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ForgotUiState())
     val state: StateFlow<ForgotUiState> = _state.asStateFlow()
 
+    private val _effects = Channel<ForgotUiEffect>(Channel.BUFFERED)
+    val effects = _effects.receiveAsFlow()
+
     /**
-     * Reduces [ForgotUiEvent] into [ForgotUiState] or starts the reset request.
+     * Reduces [ForgotUiEvent] into [ForgotUiState] or continues the flow.
      *
      * @param event Incoming UI intent.
      * @author udit
@@ -37,13 +39,13 @@ class ForgotViewModel(
     fun onEvent(event: ForgotUiEvent) {
         when (event) {
             is ForgotUiEvent.EmailChanged ->
-                _state.update { it.copy(email = event.value, errorMessage = null, message = null) }
+                _state.update { it.copy(email = event.value, errorMessage = null) }
             ForgotUiEvent.Submit -> submit()
         }
     }
 
     /**
-     * Validates email and connectivity, then invokes [sendPasswordResetUseCase].
+     * Validates the email and navigates to the code screen.
      * @author udit
      */
     private fun submit() {
@@ -52,32 +54,15 @@ class ForgotViewModel(
             _state.update { it.copy(errorMessage = TriggerStrings.Errors.ENTER_EMAIL) }
             return
         }
+        if (!DisplayTextLimits.EMAIL_SHAPE.matches(email)) {
+            _state.update { it.copy(errorMessage = TriggerStrings.Errors.EMAIL_INVALID_FORMAT) }
+            return
+        }
         if (!observeNetworkOnline().value) {
             _state.update { it.copy(errorMessage = TriggerStrings.Errors.OFFLINE_AUTH_RESET) }
             return
         }
-        viewModelScope.launch {
-            _state.update { it.copy(loading = true, errorMessage = null, message = null) }
-            sendPasswordResetUseCase(email)
-                .onSuccess {
-                    _state.update {
-                        it.copy(
-                            loading = false,
-                            message = TriggerStrings.Messages.RESET_EMAIL_SENT,
-                        )
-                    }
-                }
-                .onFailure { e ->
-                    _state.update {
-                        it.copy(
-                            loading = false,
-                            errorMessage = e.userFacingMessage(
-                                offlineFallback = TriggerStrings.Errors.OFFLINE_AUTH_RESET,
-                                genericFallback = TriggerStrings.Errors.REQUEST_FAILED,
-                            ),
-                        )
-                    }
-                }
-        }
+        startResetFlow(email)
+        viewModelScope.launch { _effects.send(ForgotUiEffect.NavigateOtp) }
     }
 }

@@ -24,5 +24,6 @@ internal fun DataSnapshot.toUserOrNull(): User? {
         bio = child(TriggerStrings.Db.CHILD_BIO).getValue(String::class.java).orEmpty(),
         status = child(TriggerStrings.Db.CHILD_STATUS).getValue(String::class.java).orEmpty(),
         searchKey = child(TriggerStrings.Db.CHILD_SEARCH).getValue(String::class.java).orEmpty(),
+        lastSeen = child(TriggerStrings.Db.CHILD_LAST_SEEN).getValue(Long::class.java) ?: 0L,
     )
 }

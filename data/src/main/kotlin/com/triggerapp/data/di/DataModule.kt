@@ -4,6 +4,7 @@ import com.triggerapp.data.connectivity.NetworkConnectivityImpl
 import com.triggerapp.data.repository.firebase.AuthRepositoryImpl
 import com.triggerapp.data.repository.firebase.ChatRepositoryImpl
 import com.triggerapp.data.repository.firebase.FcmTokenRepositoryImpl
+import com.triggerapp.data.repository.firebase.OtpRepositoryImpl
 import com.triggerapp.data.repository.firebase.UserRepositoryImpl
 import com.triggerapp.data.local.OpenChatStore
 import com.triggerapp.data.push.FirebasePushTokenReader
@@ -12,6 +13,7 @@ import com.triggerapp.domain.repository.AuthRepository
 import com.triggerapp.domain.repository.ChatRepository
 import com.triggerapp.domain.repository.FcmTokenRepository
 import com.triggerapp.domain.repository.OpenChatTracker
+import com.triggerapp.domain.repository.OtpRepository
 import com.triggerapp.domain.repository.UserRepository
 import com.triggerapp.domain.usecase.push.DevicePushTokenReader
 import com.triggerapp.domain.usecase.chat.FetchChatListPageUseCase
@@ -27,10 +29,15 @@ import com.triggerapp.domain.usecase.chat.SendConversationMessageUseCase
 import com.triggerapp.domain.usecase.chat.SetActiveChatPeerUseCase
 import com.triggerapp.domain.usecase.presence.SetUserPresenceUseCase
 import com.triggerapp.domain.usecase.auth.SendPasswordResetUseCase
+import com.triggerapp.domain.usecase.auth.SendOtpUseCase
 import com.triggerapp.domain.usecase.auth.SignInUseCase
 import com.triggerapp.domain.usecase.auth.SignOutUseCase
 import com.triggerapp.domain.usecase.auth.SignUpUseCase
+import com.triggerapp.domain.usecase.auth.SignUpWithOtpUseCase
 import com.triggerapp.domain.usecase.auth.StreamAuthSessionUseCase
+import com.triggerapp.domain.usecase.auth.CheckUsernameAvailabilityUseCase
+import com.triggerapp.domain.usecase.auth.ResetPasswordWithOtpUseCase
+import com.triggerapp.domain.usecase.auth.VerifyOtpUseCase
 import com.triggerapp.domain.usecase.user.ObserveCurrentUserUseCase
 import com.triggerapp.domain.usecase.user.UpdateBioUseCase
 import com.triggerapp.domain.usecase.user.UpdateUsernameUseCase
@@ -49,12 +56,14 @@ import org.koin.dsl.module
 val dataModule = module {
     single { FirebaseAuth.getInstance() }
     single { FirebaseDatabase.getInstance() }
+    single { com.google.firebase.functions.FirebaseFunctions.getInstance() }
     single<NetworkConnectivity> { NetworkConnectivityImpl(androidContext()) }
     single<OpenChatTracker> { OpenChatStore(androidContext()) }
-    single<UserRepository> { UserRepositoryImpl(get(), get()) }
+    single<UserRepository> { UserRepositoryImpl(get(), get(), get()) }
     single<AuthRepository> { AuthRepositoryImpl(get(), get()) }
     single<ChatRepository> { ChatRepositoryImpl(get()) }
     single<FcmTokenRepository> { FcmTokenRepositoryImpl(get()) }
+    single<OtpRepository> { OtpRepositoryImpl(get(), get(), get()) }
 
     single<DevicePushTokenReader> { FirebasePushTokenReader() }
 
@@ -63,6 +72,11 @@ val dataModule = module {
     factoryOf(::SignUpUseCase)
     factoryOf(::SendPasswordResetUseCase)
     factoryOf(::SignOutUseCase)
+    factoryOf(::SendOtpUseCase)
+    factoryOf(::VerifyOtpUseCase)
+    factoryOf(::SignUpWithOtpUseCase)
+    factoryOf(::ResetPasswordWithOtpUseCase)
+    factoryOf(::CheckUsernameAvailabilityUseCase)
     factoryOf(::ObserveCurrentUserUseCase)
     factoryOf(::UpdateUsernameUseCase)
     factoryOf(::UpdateBioUseCase)

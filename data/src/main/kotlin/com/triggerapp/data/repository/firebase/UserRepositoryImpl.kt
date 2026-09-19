@@ -11,7 +11,9 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.functions.FirebaseFunctions
 import android.util.Base64
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -57,6 +59,7 @@ private fun Throwable.isFirebaseDatabasePermissionDenied(): Boolean {
 class UserRepositoryImpl(
     private val auth: FirebaseAuth,
     database: FirebaseDatabase,
+    private val functions: FirebaseFunctions,
 ) : UserRepository {
 
     private val usersRef: DatabaseReference = database.reference.child(TriggerStrings.Db.NODE_USERS)
@@ -434,12 +437,13 @@ class UserRepositoryImpl(
      * @author udit
      */
     override suspend fun updateUsername(username: String): Result<Unit> = runCatching {
-        val uid = auth.currentUser?.uid ?: error(TriggerStrings.Errors.NOT_SIGNED_IN)
-        val updates = mapOf(
-            TriggerStrings.Db.CHILD_USERNAME to username,
-            TriggerStrings.Db.CHILD_SEARCH to username.lowercase(),
-        )
-        usersRef.child(uid).updateChildren(updates).await()
+        auth.currentUser?.uid ?: error(TriggerStrings.Errors.NOT_SIGNED_IN)
+        // Server-enforced rename: validates the handle, re-claims the unique registry key,
+        // and updates username/search atomically (client writes to those children are blocked by rules).
+        functions.getHttpsCallable(TriggerStrings.Functions.CHANGE_USERNAME)
+            .call(mapOf("username" to username))
+            .await()
+        Unit
     }
 
     /**
@@ -480,10 +484,20 @@ class UserRepositoryImpl(
         val uid = auth.currentUser?.uid ?: return Result.success(Unit)
         val snap = usersRef.child(uid).get().await()
         if (snap.exists()) {
-            val statusRef = usersRef.child(uid).child(TriggerStrings.Db.CHILD_STATUS)
-            statusRef.setValue(status).await()
+            val profileRef = usersRef.child(uid)
+            val statusRef = profileRef.child(TriggerStrings.Db.CHILD_STATUS)
             if (status.equals(TriggerStrings.Defaults.PRESENCE_ONLINE, ignoreCase = true)) {
+                statusRef.setValue(TriggerStrings.Defaults.PRESENCE_ONLINE).await()
                 statusRef.onDisconnect().setValue(TriggerStrings.Defaults.STATUS_OFFLINE).await()
+                profileRef.child(TriggerStrings.Db.CHILD_LAST_SEEN)
+                    .onDisconnect().setValue(ServerValue.TIMESTAMP).await()
+            } else {
+                profileRef.updateChildren(
+                    mapOf(
+                        TriggerStrings.Db.CHILD_STATUS to TriggerStrings.Defaults.STATUS_OFFLINE,
+                        TriggerStrings.Db.CHILD_LAST_SEEN to ServerValue.TIMESTAMP,
+                    ),
+                ).await()
             }
         }
     }

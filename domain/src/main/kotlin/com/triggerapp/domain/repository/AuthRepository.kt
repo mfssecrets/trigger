@@ -47,6 +47,15 @@ interface AuthRepository {
     suspend fun sendPasswordReset(email: String): Result<Unit>
 
     /**
+     * Signs in with a server-minted custom token (OTP-verified signup / password reset).
+     *
+     * @param token Custom token returned by the verification Cloud Function.
+     * @return [Result] success when the session is established.
+     * @author udit
+     */
+    suspend fun signInWithCustomToken(token: String): Result<Unit>
+
+    /**
      * Clears the local session (sign out).
      * @author udit
      */

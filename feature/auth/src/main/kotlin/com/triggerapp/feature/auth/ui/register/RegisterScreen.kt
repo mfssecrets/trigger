@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
@@ -33,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -57,11 +59,15 @@ import com.triggerapp.feature.auth.presentation.register.RegisterUiEffect
 import com.triggerapp.feature.auth.presentation.register.RegisterUiEvent
 import com.triggerapp.feature.auth.presentation.register.RegisterUiState
 import com.triggerapp.feature.auth.presentation.register.RegisterViewModel
+import com.triggerapp.feature.auth.presentation.register.UsernameStatus
 import com.triggerapp.feature.auth.ui.components.AuthLoadingOverlay
 import com.triggerapp.feature.auth.ui.components.AuthLogoHeader
 import com.triggerapp.feature.auth.ui.components.AuthOutlinedField
 import com.triggerapp.feature.auth.ui.components.FramedAuthButton
 import kotlinx.coroutines.flow.collectLatest
+
+/** Verified-available tick color (blue check, per spec). */
+private val UsernameTickBlue = Color(0xFF1D9BF0)
 
 /**
  * Stateless registration UI: fields, app logo header, link back to log in.
@@ -118,10 +124,36 @@ internal fun RegisterScreenContent(
                 keyboardActions = KeyboardActions(
                     onNext = { focusManager.moveFocus(FocusDirection.Down) },
                 ),
+                trailingIcon = {
+                    if (state.usernameStatus == UsernameStatus.AVAILABLE) {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = TriggerStrings.Ui.USERNAME_AVAILABLE,
+                            tint = UsernameTickBlue,
+                        )
+                    }
+                },
             )
+            val usernameHint = when (state.usernameStatus) {
+                UsernameStatus.AVAILABLE -> TriggerStrings.Ui.USERNAME_AVAILABLE
+                UsernameStatus.CHECKING -> TriggerStrings.Ui.USERNAME_CHECKING
+                UsernameStatus.TAKEN -> TriggerStrings.Errors.USERNAME_TAKEN
+                UsernameStatus.INVALID ->
+                    if (state.username.length < DisplayTextLimits.MIN_USERNAME_CHARS) {
+                        TriggerStrings.Errors.USERNAME_TOO_SHORT
+                    } else {
+                        TriggerStrings.Errors.USERNAME_INVALID_RULES
+                    }
+                UsernameStatus.IDLE -> TriggerStrings.Ui.USERNAME_HINT
+            }
+            val usernameHintColor = when (state.usernameStatus) {
+                UsernameStatus.AVAILABLE -> UsernameTickBlue
+                UsernameStatus.TAKEN, UsernameStatus.INVALID -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
             Text(
-                text = "${state.username.length}/${DisplayTextLimits.MAX_USERNAME_CHARS}",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = usernameHint,
+                color = usernameHintColor,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -228,7 +260,7 @@ internal fun RegisterScreenContent(
 /**
  * Registration route: [RegisterViewModel], [RegisterUiEffect] handling, and [RegisterScreenContent].
  *
- * @param onSuccess After successful sign-up (e.g. navigate home).
+ * @param onOtp Inputs accepted — navigate to the 6-digit email verification screen.
  * @param onLogin Navigate to login.
  * @param viewModel Injected [RegisterViewModel].
  * @author udit
@@ -236,7 +268,7 @@ internal fun RegisterScreenContent(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RegisterRoute(
-    onSuccess: () -> Unit,
+    onOtp: () -> Unit,
     onLogin: () -> Unit,
     viewModel: RegisterViewModel = koinViewModel(),
 ) {
@@ -246,9 +278,8 @@ fun RegisterRoute(
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
-                RegisterUiEffect.NavigateHome -> {
-                    viewModel.onEvent(RegisterUiEvent.ClearForm)
-                    onSuccess()
+                RegisterUiEffect.NavigateOtp -> {
+                    onOtp()
                 }
             }
         }

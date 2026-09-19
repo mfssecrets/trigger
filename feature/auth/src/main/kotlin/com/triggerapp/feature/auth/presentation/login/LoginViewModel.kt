@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.triggerapp.core.common.errors.userFacingMessage
 import com.triggerapp.core.strings.TriggerStrings
+import com.triggerapp.domain.text.DisplayTextLimits
 import com.triggerapp.domain.usecase.auth.SignInUseCase
 import com.triggerapp.domain.usecase.connectivity.ObserveNetworkOnlineUseCase
 import kotlinx.coroutines.channels.Channel
@@ -59,6 +60,10 @@ class LoginViewModel(
         val password = _state.value.password
         if (email.isEmpty() || password.isEmpty()) {
             _state.update { it.copy(errorMessage = TriggerStrings.Errors.FILL_EMAIL_PASSWORD) }
+            return
+        }
+        if (!DisplayTextLimits.EMAIL_SHAPE.matches(email)) {
+            _state.update { it.copy(errorMessage = TriggerStrings.Errors.EMAIL_INVALID_FORMAT) }
             return
         }
         if (!observeNetworkOnline().value) {

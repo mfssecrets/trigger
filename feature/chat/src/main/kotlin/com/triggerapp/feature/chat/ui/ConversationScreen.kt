@@ -82,6 +82,32 @@ import java.util.Locale
 private val ChatBarBlack = Color.Black
 
 /**
+ * Builds the WhatsApp-style presence subtitle for the chat header.
+ *
+ * @param lastSeenMs Epoch millis of the peer's last offline transition; non-positive → null.
+ * @return "online" handled by caller; here: "last seen today at HH:mm" or "last seen d MMM, HH:mm".
+ * @author udit
+ */
+internal fun lastSeenLabel(lastSeenMs: Long): String? {
+    if (lastSeenMs <= 0L) return null
+    val calendar = java.util.Calendar.getInstance()
+    val nowDay = calendar.get(java.util.Calendar.DAY_OF_YEAR)
+    val nowYear = calendar.get(java.util.Calendar.YEAR)
+    calendar.timeInMillis = lastSeenMs
+    val sameDay = calendar.get(java.util.Calendar.DAY_OF_YEAR) == nowDay &&
+        calendar.get(java.util.Calendar.YEAR) == nowYear
+    val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+        .format(java.util.Date(lastSeenMs))
+    return if (sameDay) {
+        TriggerStrings.Ui.LAST_SEEN_PREFIX + TriggerStrings.Ui.LAST_SEEN_TODAY + time
+    } else {
+        val day = java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault())
+            .format(java.util.Date(lastSeenMs))
+        TriggerStrings.Ui.LAST_SEEN_PREFIX + day + ", " + time
+    }
+}
+
+/**
  * Incoming message bubble fill.
  * @author udit
  */
@@ -159,15 +185,29 @@ internal fun ConversationScreenContent(
                                     ),
                             )
                         }
-                        Text(
-                            text = peer?.username ?: TriggerStrings.Ui.CHATS,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = peer?.username ?: TriggerStrings.Ui.CHATS,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            val presenceLabel = when {
+                                peer?.isOnline == true -> TriggerStrings.Defaults.PRESENCE_ONLINE
+                                else -> lastSeenLabel(peer?.lastSeen ?: 0L)
+                            }
+                            if (presenceLabel != null) {
+                                Text(
+                                    text = presenceLabel,
+                                    color = Color(0xFFAFACAC),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
                     }
                 },
                 navigationIcon = {

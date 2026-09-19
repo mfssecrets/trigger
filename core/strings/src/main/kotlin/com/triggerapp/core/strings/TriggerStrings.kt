@@ -22,6 +22,10 @@ object TriggerStrings {
         const val PEER_PROFILE_PREFIX = "peerProfile"
         const val PEER_PROFILE_PATTERN = "$PEER_PROFILE_PREFIX/{profileUserId}"
         const val ARG_PROFILE_USER_ID = "profileUserId"
+        const val OTP = "otp"
+        const val ARG_OTP_EMAIL = "otpEmail"
+        const val ARG_OTP_PURPOSE = "otpPurpose"
+        const val NEW_PASSWORD = "newPassword"
     }
 
     /**
@@ -64,6 +68,30 @@ object TriggerStrings {
         const val CANCEL = "Cancel"
         const val RESET_EMAIL_HINT = "Enter your email"
         const val SEND_RESET = "Send reset link"
+        const val OTP_TITLE = "Verify your email"
+        const val OTP_SUBTITLE_SIGNUP = "We sent a 6-digit code to\u0020"
+        const val OTP_SUBTITLE_RESET = "We sent a 6-digit reset code to\u0020"
+        const val OTP_SUBTITLE_TAIL = ". Enter it below to continue."
+        const val OTP_VERIFY = "Verify"
+        const val OTP_VERIFYING = "Verifying…"
+        const val OTP_RESEND = "Resend code"
+        const val OTP_RESEND_IN = "Resend code in\u0020"
+        const val OTP_RESEND_SECONDS = "s"
+        const val OTP_SENDING = "Sending code…"
+        const val OTP_CHANGE_EMAIL = "Wrong email? Go back"
+        const val LAST_SEEN_PREFIX = "last seen\u0020"
+        const val LAST_SEEN_TODAY = "today at\u0020"
+        const val NEW_PASSWORD_TITLE = "Create a new password"
+        const val NEW_PASSWORD_SUBTITLE = "Your new password must be different from previously used passwords."
+        const val NEW_PASSWORD = "New password"
+        const val CONFIRM_PASSWORD = "Confirm password"
+        const val UPDATE_PASSWORD = "Update password"
+        const val USERNAME_AVAILABLE = "Username is available"
+        const val USERNAME_CHECKING = "Checking availability…"
+        const val USERNAME_HINT = "6–25 characters · letters, numbers and _"
+        const val VALIDATING = "Validating…"
+        const val CREATING_ACCOUNT = "Creating your account…"
+        const val UPDATING_PASSWORD = "Updating password…"
         const val BACK = "Back"
         const val TRY_AGAIN = "Try again"
         const val CLOSE = "Close"
@@ -106,6 +134,23 @@ object TriggerStrings {
                 "download google-services.json, and replace the file in app/."
         const val INVALID_EMAIL_OR_PASSWORD = "Incorrect email or password."
         const val INVALID_EMAIL = "That email address is not valid."
+        const val EMAIL_INVALID_FORMAT = "Enter a valid email address."
+        const val PASSWORD_MIN = "Password must be at least 6 characters."
+        const val PASSWORDS_DO_NOT_MATCH = "Passwords do not match."
+        const val USERNAME_REQUIRED = "Choose a username first."
+        const val USERNAME_TOO_SHORT = "Username must be at least 6 characters."
+        const val USERNAME_INVALID_RULES = "Use 6–25 characters: letters, numbers and _ only."
+        const val USERNAME_TAKEN = "That username is already taken."
+        const val USERNAME_UNCHANGED = "Pick a different username than your current one."
+        const val OTP_INVALID = "That code is incorrect. Check the email and try again."
+        const val OTP_EXPIRED = "That code has expired. Send a new one."
+        const val OTP_TOO_MANY_ATTEMPTS = "Too many wrong attempts. Request a new code."
+        const val OTP_COOLDOWN = "Please wait a minute before requesting a new code."
+        const val OTP_SEND_FAILED = "Couldn't send the code. Try again."
+        const val OTP_SERVICE_NOT_CONFIGURED =
+            "Email verification isn't configured yet on the server. Contact the app owner."
+        const val OTP_EMAIL_IN_USE = "That email is already registered. Try logging in."
+        const val OTP_EMAIL_NOT_FOUND = "No account found with that email."
         const val EMAIL_ALREADY_IN_USE = "That email is already registered."
         const val WEAK_PASSWORD = "Password is too weak (use at least 6 characters)."
         const val USER_DISABLED = "This account has been disabled."
@@ -156,11 +201,26 @@ object TriggerStrings {
     }
 
     /**
+     * Names of the HTTPS-callable Cloud Functions backing OTP flows and username renames.
+     * @author udit
+     */
+    object Functions {
+        const val SEND_OTP = "sendOtp"
+        const val VERIFY_OTP = "verifyOtp"
+        const val SIGN_UP_WITH_OTP = "signUpWithOtp"
+        const val RESET_PASSWORD_WITH_OTP = "resetPasswordWithOtp"
+        const val CHANGE_USERNAME = "changeUsername"
+    }
+
+    /**
      * Non-error user feedback such as post-action confirmations (e.g. email sent).
      * @author udit
      */
     object Messages {
         const val RESET_EMAIL_SENT = "Check your inbox for reset instructions."
+        const val OTP_SENT = "Verification code sent to your email."
+        const val PASSWORD_RESET_SUCCESS = "Password updated — you're signed in!"
+        const val USERNAME_UPDATED = "Username updated."
     }
 
     /**
@@ -172,6 +232,8 @@ object TriggerStrings {
         const val NODE_CHATS = "Chats"
         const val NODE_CHAT_LIST = "ChatList"
         const val NODE_TOKENS = "Tokens"
+        const val NODE_OTPS = "Otps"
+        const val NODE_USERNAMES = "Usernames"
 
         const val CHILD_ID = "id"
         const val CHILD_USERNAME = "username"
@@ -186,6 +248,7 @@ object TriggerStrings {
         const val CHILD_MESSAGE = "message"
         const val CHILD_SEEN = "seen"
         const val CHILD_TOKEN = "token"
+        const val CHILD_LAST_SEEN = "lastSeen"
 
         const val ORDER_BY_USERNAME = "username"
         const val ORDER_BY_SEARCH = "search"

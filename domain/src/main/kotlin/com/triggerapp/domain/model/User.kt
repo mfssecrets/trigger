@@ -13,6 +13,7 @@ import com.triggerapp.core.strings.TriggerStrings
  * @property bio Short user bio.
  * @property status Presence string: treated as online only when it equals [TriggerStrings.Defaults.PRESENCE_ONLINE] (case-insensitive) after trim.
  * @property searchKey Lowercase key used for prefix search in the database.
+ * @property lastSeen Epoch millis of the last offline transition; `0` when never seen offline.
  * @author udit
  */
 data class User(
@@ -24,6 +25,7 @@ data class User(
     val bio: String,
     val status: String,
     val searchKey: String,
+    val lastSeen: Long = 0L,
 ) {
     /**
      * Whether the user should be shown as online in the UI.

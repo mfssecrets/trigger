@@ -83,6 +83,22 @@ class AuthRepositoryImpl(
         }
 
     /**
+     * Signs in with a server-minted custom token (issued after OTP-verified signup or reset).
+     *
+     *
+     * @param token Custom token from the verification Cloud Function.
+     * @return [Result] success when the session is established.
+     * @author udit
+     */
+    override suspend fun signInWithCustomToken(token: String): Result<Unit> =
+        try {
+            auth.signInWithCustomToken(token).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(UiSafeMessageException(mapFirebaseAuthThrowable(e)).apply { initCause(e) })
+        }
+
+    /**
      * Sends Firebase’s password-reset email for [email].
      *
      *

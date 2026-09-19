@@ -23,6 +23,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,10 +33,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
@@ -82,6 +85,7 @@ import kotlinx.coroutines.flow.filter
 private val AppBarBlack = Color.Black
 private val MutedTab = Color(0xFFAFACAC)
 private val SearchHint = Color(0xFF797B7E)
+private val TabActive = Color(0xFF63FFA3)
 /**
  * Home shell UI: top bar (avatar + name, tap opens Profile tab), tab row, optional offline banner, and three tab slots.
  *
@@ -114,6 +118,68 @@ internal fun HomeMainLayout(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = TriggerScreenBackground,
+        bottomBar = {
+            // Bottom mobile navigation with icons (moved from the top tab row).
+            NavigationBar(
+                containerColor = AppBarBlack,
+                tonalElevation = 0.dp,
+            ) {
+                NavigationBarItem(
+                    selected = selectedTabIndex == 0,
+                    onClick = { onTabSelected(0) },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.ChatBubble,
+                            contentDescription = TriggerStrings.Ui.CHATS,
+                        )
+                    },
+                    label = { Text(TriggerStrings.Ui.CHATS) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = TabActive,
+                        selectedTextColor = Color.White,
+                        unselectedIconColor = MutedTab,
+                        unselectedTextColor = MutedTab,
+                        indicatorColor = Color(0xFF1F2B23),
+                    ),
+                )
+                NavigationBarItem(
+                    selected = selectedTabIndex == 1,
+                    onClick = { onTabSelected(1) },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Group,
+                            contentDescription = TriggerStrings.Ui.USERS,
+                        )
+                    },
+                    label = { Text(TriggerStrings.Ui.USERS) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = TabActive,
+                        selectedTextColor = Color.White,
+                        unselectedIconColor = MutedTab,
+                        unselectedTextColor = MutedTab,
+                        indicatorColor = Color(0xFF1F2B23),
+                    ),
+                )
+                NavigationBarItem(
+                    selected = selectedTabIndex == 2,
+                    onClick = { onTabSelected(2) },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Person,
+                            contentDescription = TriggerStrings.Ui.PROFILE,
+                        )
+                    },
+                    label = { Text(TriggerStrings.Ui.PROFILE) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = TabActive,
+                        selectedTextColor = Color.White,
+                        unselectedIconColor = MutedTab,
+                        unselectedTextColor = MutedTab,
+                        indicatorColor = Color(0xFF1F2B23),
+                    ),
+                )
+            }
+        },
         topBar = {
             Surface(color = AppBarBlack) {
                 Row(
@@ -158,50 +224,6 @@ internal fun HomeMainLayout(
                 .padding(padding)
                 .background(TriggerScreenBackground),
         ) {
-            PrimaryTabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = AppBarBlack,
-                contentColor = Color.White,
-                indicator = {
-                    TabRowDefaults.PrimaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(selectedTabIndex, matchContentSize = false),
-                        width = Dp.Unspecified,
-                        color = Color(0xFF63FFA3),
-                    )
-                },
-                divider = {},
-            ) {
-                Tab(
-                    selected = selectedTabIndex == 0,
-                    onClick = { onTabSelected(0) },
-                    text = {
-                        Text(
-                            TriggerStrings.Ui.CHATS,
-                            color = if (selectedTabIndex == 0) Color.White else MutedTab,
-                        )
-                    },
-                )
-                Tab(
-                    selected = selectedTabIndex == 1,
-                    onClick = { onTabSelected(1) },
-                    text = {
-                        Text(
-                            TriggerStrings.Ui.USERS,
-                            color = if (selectedTabIndex == 1) Color.White else MutedTab,
-                        )
-                    },
-                )
-                Tab(
-                    selected = selectedTabIndex == 2,
-                    onClick = { onTabSelected(2) },
-                    text = {
-                        Text(
-                            TriggerStrings.Ui.PROFILE,
-                            color = if (selectedTabIndex == 2) Color.White else MutedTab,
-                        )
-                    },
-                )
-            }
             if (!isOnline) {
                 Surface(color = Color(0xFF5C3A2E)) {
                     Text(

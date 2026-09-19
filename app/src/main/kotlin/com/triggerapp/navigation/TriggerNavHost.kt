@@ -13,6 +13,8 @@ import com.triggerapp.core.strings.TriggerStrings
 import com.triggerapp.core.ui.theme.TriggerTheme as AppTheme
 import com.triggerapp.feature.auth.ui.forgot.ForgotRoute
 import com.triggerapp.feature.auth.ui.login.LoginRoute
+import com.triggerapp.feature.auth.ui.newpassword.NewPasswordRoute
+import com.triggerapp.feature.auth.ui.otp.OtpRoute
 import com.triggerapp.feature.auth.ui.register.RegisterRoute
 import com.triggerapp.feature.chat.ui.ConversationRoute
 import com.triggerapp.feature.chat.ui.PeerProfileRoute
@@ -64,17 +66,43 @@ fun TriggerNavHost(modifier: Modifier = Modifier) {
         }
         composable(TriggerRoutes.REGISTER) {
             RegisterRoute(
-                onSuccess = {
+                onOtp = {
+                    navController.navigate(TriggerRoutes.OTP) { launchSingleTop = true }
+                },
+                onLogin = { navController.popBackStack() },
+            )
+        }
+        composable(TriggerRoutes.OTP) {
+            OtpRoute(
+                onVerifiedHome = {
                     navController.navigate(TriggerRoutes.HOME) {
                         popUpTo(TriggerRoutes.SPLASH) { inclusive = true }
                         launchSingleTop = true
                     }
                 },
-                onLogin = { navController.popBackStack() },
+                onNewPassword = {
+                    navController.navigate(TriggerRoutes.NEW_PASSWORD) { launchSingleTop = true }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(TriggerRoutes.NEW_PASSWORD) {
+            NewPasswordRoute(
+                onSuccessHome = {
+                    navController.navigate(TriggerRoutes.HOME) {
+                        popUpTo(TriggerRoutes.SPLASH) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
             )
         }
         composable(TriggerRoutes.FORGOT) {
-            ForgotRoute(onBack = { navController.popBackStack() })
+            ForgotRoute(
+                onOtp = {
+                    navController.navigate(TriggerRoutes.OTP) { launchSingleTop = true }
+                },
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(
             route = TriggerRoutes.HOME,

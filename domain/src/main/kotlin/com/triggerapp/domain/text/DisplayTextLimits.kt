@@ -6,8 +6,22 @@ package com.triggerapp.domain.text
  */
 object DisplayTextLimits {
     const val MAX_BIO_LINES = 6
+    const val MIN_USERNAME_CHARS = 6
     const val MAX_USERNAME_CHARS = 25
     const val MAX_BIO_CHARS = 139
+    const val MIN_PASSWORD_CHARS = 6
+
+    /**
+     * Allowed username (handle) charset: latin letters, digits, underscore.
+     * @author udit
+     */
+    val USERNAME_ALLOWED = Regex("^[A-Za-z0-9_]+$")
+
+    /**
+     * Pragmatic email shape used for inline form validation before any server round-trip.
+     * @author udit
+     */
+    val EMAIL_SHAPE = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 }
 
 /**

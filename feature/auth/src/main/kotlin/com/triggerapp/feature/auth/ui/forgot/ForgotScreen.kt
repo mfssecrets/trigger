@@ -46,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.triggerapp.core.strings.TriggerStrings
 import com.triggerapp.core.ui.triggerKeyboardInsetPadding
 import com.triggerapp.feature.auth.R
+import com.triggerapp.feature.auth.presentation.forgot.ForgotUiEffect
 import com.triggerapp.feature.auth.presentation.forgot.ForgotUiEvent
 import com.triggerapp.feature.auth.presentation.forgot.ForgotUiState
 import com.triggerapp.feature.auth.presentation.forgot.ForgotViewModel
@@ -154,15 +155,6 @@ internal fun ForgotScreenContent(
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }
-            state.message?.let { msg ->
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    msg,
-                    color = TriggerAccent,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-            }
             Spacer(Modifier.height(28.dp))
             FramedAuthButton(
                 text = TriggerStrings.Ui.SEND_RESET,
@@ -188,6 +180,7 @@ internal fun ForgotScreenContent(
 /**
  * Forgot-password route: [ForgotViewModel] and [ForgotScreenContent].
  *
+ * @param onOtp Email accepted — navigate to the 6-digit code screen.
  * @param onBack Navigate up.
  * @param viewModel Injected [ForgotViewModel].
  * @author udit
@@ -195,10 +188,20 @@ internal fun ForgotScreenContent(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ForgotRoute(
+    onOtp: () -> Unit,
     onBack: () -> Unit,
     viewModel: ForgotViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    androidx.compose.runtime.LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                ForgotUiEffect.NavigateOtp -> onOtp()
+            }
+        }
+    }
+
     ForgotScreenContent(
         state = state,
         onBack = onBack,
@@ -220,7 +223,6 @@ private fun ForgotScreenPreview() {
                 email = "recover@example.com",
                 loading = false,
                 errorMessage = null,
-                message = null,
             ),
             onBack = {},
             onEvent = {},

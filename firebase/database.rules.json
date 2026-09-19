@@ -4,8 +4,25 @@
       ".read": "auth != null",
       ".indexOn": ["username", "search"],
       "$uid": {
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "username": {
+          ".validate": "newData.isString() && newData.val() == data.val()"
+        },
+        "search": {
+          ".validate": "newData.isString() && newData.val() == data.val()"
+        },
+        "id": {
+          ".validate": "newData.isString() && newData.val() == data.val()"
+        }
       }
+    },
+    "Usernames": {
+      ".read": true,
+      ".write": false
+    },
+    "Otps": {
+      ".read": false,
+      ".write": false
     },
     "Tokens": {
       "$uid": {
