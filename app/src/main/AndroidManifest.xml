@@ -28,7 +28,7 @@
         android:maxSdkVersion="28" />
 
     <application
-        android:name=".WhizzzApplication"
+        android:name=".TriggerApplication"
         android:enableOnBackInvokedCallback="true"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -59,7 +59,7 @@
         </activity>
 
         <service
-            android:name=".messaging.WhizzzFirebaseMessagingService"
+            android:name=".messaging.TriggerFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

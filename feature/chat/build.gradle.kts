@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.whizzz.feature.chat"
+    namespace = "com.triggerapp.feature.chat"
     compileSdk = 35
 
     defaultConfig {

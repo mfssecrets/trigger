@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.whizzz.core.ui"
+    namespace = "com.triggerapp.core.ui"
     compileSdk = 35
 
     defaultConfig {

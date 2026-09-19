@@ -1,5 +1,5 @@
 {
-  "name": "whizzz-functions",
+  "name": "trigger-functions",
   "description": "FCM on new chat message (Admin SDK — no client server key).",
   "engines": {
     "node": "20"

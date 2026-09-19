@@ -1,6 +1,6 @@
 /**
  * Sends a data message when a new row is created under Realtime Database `Chats/{id}`.
- * Matches Android WhizzzFirebaseMessagingService payload keys (WhizzzStrings.Fcm).
+ * Matches Android TriggerFirebaseMessagingService payload keys (TriggerStrings.Fcm).
  *
  * Deploy: npm install && firebase deploy --only functions
  * Requires Blaze + billing for Cloud Functions (Firebase pricing).

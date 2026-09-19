@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.whizzz.core.common"
+    namespace = "com.triggerapp.core.common"
     compileSdk = 35
 
     defaultConfig {

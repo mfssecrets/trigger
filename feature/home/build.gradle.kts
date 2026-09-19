@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.whizzz.feature.home"
+    namespace = "com.triggerapp.feature.home"
     compileSdk = 35
 
     defaultConfig {

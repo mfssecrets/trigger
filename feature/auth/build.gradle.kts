@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.whizzz.feature.auth"
+    namespace = "com.triggerapp.feature.auth"
     compileSdk = 35
 
     defaultConfig {
@@ -34,7 +34,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.lottie.compose)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
     implementation(libs.androidx.core.ktx)

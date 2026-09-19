@@ -68,7 +68,7 @@ https://github.com/user-attachments/assets/955f8ac9-82ba-45d2-8358-3c069e561abd
 ## Setup
 
 1. Clone the repo.
-2. In [Firebase Console](https://console.firebase.google.com/), add an Android app (**`com.example.whizzz`** or your `applicationId`), download **`google-services.json`** → **`app/google-services.json`** (local only; not in git).
+2. In [Firebase Console](https://console.firebase.google.com/), add an Android app (**`com.triggerapp.connect`** or your `applicationId`), download **`google-services.json`** → **`app/google-services.json`** (local only; not in git).
 3. Enable **Authentication** (email/password), **Realtime Database**, **Cloud Messaging**; configure **App Check** as needed.
 
 ## Build

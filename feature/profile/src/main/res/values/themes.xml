@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Whizzz.ProfileCrop" parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="Theme.Trigger.ProfileCrop" parent="Theme.AppCompat.Light.DarkActionBar">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
         <item name="android:windowLightStatusBar">false</item>
