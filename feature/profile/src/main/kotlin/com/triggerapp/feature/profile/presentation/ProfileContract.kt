@@ -67,6 +67,24 @@ sealed interface ProfileUiEvent {
     data object SaveDialog : ProfileUiEvent
 
     /**
+     * Direct username save (no dialog): used by the Edit Profile bottom sheet.
+     *
+     *
+     * @property value New username (server validates and re-claims the unique handle).
+     * @author udit
+     */
+    data class SaveProfileName(val value: String) : ProfileUiEvent
+
+    /**
+     * Direct bio save (no dialog): used by the Edit Profile bottom sheet.
+     *
+     *
+     * @property value New bio text.
+     * @author udit
+     */
+    data class SaveProfileBio(val value: String) : ProfileUiEvent
+
+    /**
      * JPEG bytes chosen after crop, ready for upload.
      *
      *

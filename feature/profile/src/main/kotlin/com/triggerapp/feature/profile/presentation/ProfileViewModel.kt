@@ -128,6 +128,8 @@ class ProfileViewModel(
                 it.copy(dialogText = next)
             }
             ProfileUiEvent.SaveDialog -> saveDialog()
+            is ProfileUiEvent.SaveProfileName -> saveUsernameDirect(event.value)
+            is ProfileUiEvent.SaveProfileBio -> saveBioDirect(event.value)
             is ProfileUiEvent.PhotoPicked -> uploadPhoto(event.jpegBytes)
         }
     }
@@ -144,21 +146,62 @@ class ProfileViewModel(
             ProfileDialog.Username -> raw.clampUsername()
             else -> raw
         }
+        when (dialog) {
+            ProfileDialog.Bio -> saveBioDirect(text)
+            ProfileDialog.Username -> saveUsernameDirect(text)
+            ProfileDialog.None -> Unit
+        }
+    }
+
+    /**
+     * Persists the username through the server-enforced rename flow, without touching dialog state.
+     *
+     * @param text New username (already validated server-side; clamped here).
+     * @author udit
+     */
+    private fun saveUsernameDirect(text: String) {
+        val username = text.trim().clampUsername()
         if (!observeNetworkOnline().value) {
-            _state.update {
-                it.copy(error = TriggerStrings.Errors.PROFILE_SAVE_OFFLINE)
-            }
+            _state.update { it.copy(error = TriggerStrings.Errors.PROFILE_SAVE_OFFLINE) }
             return
         }
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
-            when (dialog) {
-                ProfileDialog.Username -> updateUsername(text)
-                ProfileDialog.Bio -> updateBio(text)
-                ProfileDialog.None -> Result.success(Unit)
-            }
+            updateUsername(username)
                 .onSuccess {
-                    _state.update { it.copy(loading = false, dialog = ProfileDialog.None, dialogText = "") }
+                    _state.update { it.copy(loading = false, error = null, dialog = ProfileDialog.None, dialogText = "") }
+                }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            loading = false,
+                            error = e.userFacingMessage(
+                                offlineFallback = TriggerStrings.Errors.PROFILE_SAVE_OFFLINE,
+                                genericFallback = TriggerStrings.Errors.UPDATE_FAILED,
+                            ),
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * Persists the bio without touching dialog state.
+     *
+     * @param text New bio (clamped here and server-side).
+     * @author udit
+     */
+    private fun saveBioDirect(text: String) {
+        val bio = text.trim().clampBio()
+        if (!observeNetworkOnline().value) {
+            _state.update { it.copy(error = TriggerStrings.Errors.PROFILE_SAVE_OFFLINE) }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            updateBio(bio)
+                .onSuccess {
+                    _state.update { it.copy(loading = false, error = null, dialog = ProfileDialog.None, dialogText = "") }
                 }
                 .onFailure { e ->
                     _state.update {
