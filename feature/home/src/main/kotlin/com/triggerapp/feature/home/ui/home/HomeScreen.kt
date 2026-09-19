@@ -101,6 +101,7 @@ import com.triggerapp.feature.home.presentation.shell.HomeUiEvent
 import com.triggerapp.feature.home.presentation.shell.HomeViewModel
 import com.triggerapp.feature.home.presentation.users.UsersUiEvent
 import com.triggerapp.feature.home.presentation.users.UsersViewModel
+import com.triggerapp.feature.home.ui.feed.FeedsTab
 import com.triggerapp.feature.profile.ui.ProfileRoute
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -626,7 +627,7 @@ fun HomeRoute(
         onTabSelected = { tabIndex = it },
         currentUser = homeState.currentUser,
         tab0 = { ConversationsTab(onOpenChat = onOpenChat) },
-        tab1 = { FeedsTab() },
+        tab1 = { FeedsTab(currentUser = homeState.currentUser, onOpenChat = onOpenChat) },
         tab2 = { NotificationsTab() },
         tab3 = { UsersTab(onOpenChat = onOpenChat) },
         tab4 = {
@@ -638,185 +639,6 @@ fun HomeRoute(
             )
         },
     )
-}
-
-private data class FeedPostItem(
-    val id: String,
-    val authorName: String,
-    val handle: String,
-    val timeAgo: String,
-    val content: String,
-    val initialLikes: Int,
-    val initialComments: Int,
-)
-
-@Composable
-private fun FeedsTab() {
-    val samplePosts = remember {
-        listOf(
-            FeedPostItem(
-                id = "1",
-                authorName = "Jordan",
-                handle = "@jordan",
-                timeAgo = "10m ago",
-                content = "Trigger feeds are live! Excited to connect with everyone in realtime. Check out the updated tabs and new dashboard layout! 🚀",
-                initialLikes = 18,
-                initialComments = 4,
-            ),
-            FeedPostItem(
-                id = "2",
-                authorName = "Alex River",
-                handle = "@alex_river",
-                timeAgo = "45m ago",
-                content = "Smooth chat delivery and instant presence indicators make conversations so responsive here. Loving the fresh UI updates ✨",
-                initialLikes = 31,
-                initialComments = 8,
-            ),
-            FeedPostItem(
-                id = "3",
-                authorName = "Cleopatra",
-                handle = "@cleopatra",
-                timeAgo = "2h ago",
-                content = "Updated my profile handle and avatar photo. You can now tap to preview photos or customize your username separately in the Profile tab!",
-                initialLikes = 52,
-                initialComments = 12,
-            ),
-        )
-    }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TriggerScreenBackground)
-            .padding(horizontal = 16.dp),
-    ) {
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF1E242B)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add Story", tint = TabActive)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text("Your Story", color = Color.White, fontSize = 11.sp)
-                }
-
-                listOf("Jordan", "Alex", "Cleopatra", "Sam").forEach { name ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .size(54.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF263238)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                name.take(1),
-                                color = TabActive,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                            )
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text(name, color = Color(0xFFAFACAC), fontSize = 11.sp)
-                    }
-                }
-            }
-        }
-
-        items(samplePosts, key = { it.id }) { post ->
-            FeedPostCard(post = post)
-            Spacer(Modifier.height(12.dp))
-        }
-    }
-}
-
-@Composable
-private fun FeedPostCard(post: FeedPostItem) {
-    var isLiked by remember { mutableStateOf(false) }
-    var likesCount by remember { mutableIntStateOf(post.initialLikes) }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF181D23)),
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF2B3540)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        post.authorName.take(1),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(post.authorName, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Text("${post.handle} • ${post.timeAgo}", color = Color(0xFFAFACAC), fontSize = 12.sp)
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(post.content, color = Color(0xFFECEFF1), fontSize = 14.sp, lineHeight = 20.sp)
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable {
-                        isLiked = !isLiked
-                        likesCount += if (isLiked) 1 else -1
-                    },
-                ) {
-                    Icon(
-                        imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                        contentDescription = "Like",
-                        tint = if (isLiked) Color(0xFFFF5252) else Color(0xFFAFACAC),
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("$likesCount", color = Color(0xFFAFACAC), fontSize = 13.sp)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Filled.ModeComment,
-                        contentDescription = "Comments",
-                        tint = Color(0xFFAFACAC),
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("${post.initialComments}", color = Color(0xFFAFACAC), fontSize = 13.sp)
-                }
-                Icon(
-                    imageVector = Icons.Filled.Share,
-                    contentDescription = "Share",
-                    tint = Color(0xFFAFACAC),
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-    }
 }
 
 private data class NotificationItem(

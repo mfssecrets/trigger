@@ -96,3 +96,47 @@ Integrated native media selection and transmission without relying on mock or si
 ### Change
 - Removed the message read receipts ("Seen" label and read status indicators) below sent message bubbles.
 - Retained clean timestamp display aligned with message content for an uncluttered conversational interface.
+
+---
+
+## 7. Production-Ready Feed Page Redesign (`ui/feed/`)
+
+### Overview
+Transformed the temporary placeholder feeds tab into a fully functional, production-ready social experience tailored to Trigger's unique cyberpunk dark aesthetic. Adhered strictly to the application's color code (`TriggerScreenBackground` `#16191C`, `TriggerAccent` `#63FFA3`, `TriggerPurple` `#6B4EE6`, and elevated surfaces `#161B21`) while avoiding generic template clones.
+
+### Key Architectural Modules
+1. **`FeedModel.kt`**:
+   - `FeedPost`: Rich data model with verified author status, location, timestamps, media URLs, pulse score ratings, like counters, bookmark states, and nested comments.
+   - `FeedComment`: Author details, text, timestamp, and per-comment likes.
+   - `FeedStory`: Community and personal story items with unseen story states and captions.
+
+2. **`FeedPostCard.kt`**:
+   - **Header**: Author avatar framed in a Trigger gradient ring (`#63FFA3` & `#6B4EE6`), verified badge, handle, location, and a live "⚡ Pulse" score badge.
+   - **3-Dot Context Menu**: Save Post, Copy Link, Share via Chat, Not Interested, and Report Post.
+   - **Media Container & Double-Tap Heart**: Aspect-ratio cropped photo display with animated double-tap gesture detection that pops a glowing heart badge with bouncy spring physics.
+   - **Action Bar**:
+     - Animated Like toggle (`#FF4868` crimson heart with live counter).
+     - Comment button launching the interactive bottom sheet.
+     - Share button copying direct post links to the system clipboard.
+     - Bookmark toggle saving/unsaving posts with immediate snackbar confirmation.
+   - **Social Proof**: Multi-avatar overlapping bubble stack with "Liked by [user] and [N] others".
+   - **Rich Caption**: Formatted handle, expandable caption toggle ("more"), and interactive `#hashtag` chips in mint accent.
+   - **Quick Reaction Bar**: One-tap emoji reactions (`❤️`, `🔥`, `🚀`) that immediately append to the post comments.
+
+3. **`FeedCommentsSheet.kt`**:
+   - Modal bottom sheet displaying all comments with author avatars, handles, timestamps, and individual like toggles.
+   - Quick reaction emoji picker (`❤️`, `🔥`, `⚡`, `👏`, `🚀`, `✨`, `💯`).
+   - Native comment input field with immediate list insertion and automatic smooth scrolling to newly submitted comments.
+
+4. **`StoryViewerDialog.kt`**:
+   - Fullscreen immersive story viewer with an animated 5-second progress bar.
+   - Author profile avatar, handle, time-ago, caption overlay, and tap-to-dismiss behavior.
+
+5. **`CreatePostDialog.kt`**:
+   - Integrated composer modal allowing users to post thoughts, select topic hashtags (`#tech`, `#design`, `#trigger`, `#community`), and attach gallery photos via the zero-permission Android Photo Picker (`ActivityResultContracts.PickVisualMedia()`). Newly published posts immediately appear at the top of the feed.
+
+6. **`FeedsTab.kt`**:
+   - Horizontal stories carousel with custom glowing gradient rings and "Your Story" photo upload.
+   - "What's triggering your mind?" trigger card.
+   - Smooth lazy list with integrated `SnackbarHost` feedback for likes, saves, shares, and moderation actions.
+
