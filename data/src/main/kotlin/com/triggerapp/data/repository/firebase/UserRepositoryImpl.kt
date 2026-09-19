@@ -1,7 +1,9 @@
 package com.triggerapp.data.repository.firebase
 
+import com.triggerapp.core.common.errors.UiSafeMessageException
 import com.triggerapp.core.strings.TriggerStrings
 import com.triggerapp.data.mapper.toUserOrNull
+import com.triggerapp.domain.model.FaceVerification
 import com.triggerapp.domain.model.PagedUsersResult
 import com.triggerapp.domain.model.User
 import com.triggerapp.domain.model.UserListCursor
@@ -474,28 +476,40 @@ class UserRepositoryImpl(
     }
 
     /**
-     * Writes the on-device face-verification result in one multi-path update so the
-     * `verification` node lands atomically (server timestamp from the backend clock).
+     * Calls the `verifyFace` Cloud Function with the face crop. The server performs
+     * Face++ detection and — on success — writes `Users/{uid}/verification` itself.
+     * Clients never write the verification node (rules deny it), so the badge is
+     * tamper-proof: the only writer is the trusted backend.
      *
      *
-     * @param gender Classifier label (`"male"` / `"female"`).
-     * @param confidence Classifier confidence in `[0,1]`.
-     * @return [Result] success when written.
+     * @param imageBase64 Base64 JPEG of the upright face crop.
+     * @return [Result] with the server-written verification payload.
      * @author udit
      */
-    override suspend fun saveFaceVerification(gender: String, confidence: Double): Result<Unit> =
+    override suspend fun verifyFaceWithServer(imageBase64: String): Result<FaceVerification> =
         runCatching {
-            val uid = auth.currentUser?.uid ?: error(TriggerStrings.Errors.NOT_SIGNED_IN)
-            val node = TriggerStrings.Db.NODE_VERIFICATION
-            usersRef.child(uid).updateChildren(
-                mapOf(
-                    "$node/${TriggerStrings.Db.CHILD_FACE_VERIFIED}" to true,
-                    "$node/${TriggerStrings.Db.CHILD_DETECTED_GENDER}" to gender,
-                    "$node/${TriggerStrings.Db.CHILD_CONFIDENCE}" to confidence,
-                    "$node/${TriggerStrings.Db.CHILD_VERIFIED_AT}" to ServerValue.TIMESTAMP,
-                ),
-            ).await()
-            Unit
+            auth.currentUser?.uid ?: error(TriggerStrings.Errors.NOT_SIGNED_IN)
+            val response = try {
+                functions.getHttpsCallable(TriggerStrings.Functions.VERIFY_FACE)
+                    .call(mapOf("imageBase64" to imageBase64))
+                    .await()
+            } catch (e: Throwable) {
+                // Map stable function tokens to user-facing strings (same pattern as OTP flows).
+                throw UiSafeMessageException(
+                    e.findFunctionsTokenMessage()
+                        ?: TriggerStrings.Errors.VERIFICATION_SERVER_UNAVAILABLE,
+                ).apply { initCause(e) }
+            }
+            @Suppress("UNCHECKED_CAST")
+            val data = response.data as? Map<String, Any?>
+                ?: error(TriggerStrings.Errors.VERIFICATION_SERVER_UNAVAILABLE)
+            FaceVerification(
+                faceVerified = data[TriggerStrings.Db.CHILD_FACE_VERIFIED] == true,
+                gender = (data[TriggerStrings.Db.CHILD_DETECTED_GENDER] as? String).orEmpty(),
+                confidence = (data[TriggerStrings.Db.CHILD_CONFIDENCE] as? Number)?.toDouble() ?: 0.0,
+                verifiedAt = (data[TriggerStrings.Db.CHILD_VERIFIED_AT] as? Number)?.toLong()
+                    ?: System.currentTimeMillis(),
+            )
         }
 
     /**

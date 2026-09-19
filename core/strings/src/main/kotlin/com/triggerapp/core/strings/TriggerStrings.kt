@@ -67,19 +67,22 @@ object TriggerStrings {
         const val NOT_VERIFIED = "Not verified"
         const val VERIFY_INTRO_TITLE = "Face verification"
         const val VERIFY_INTRO_BODY =
-            "Confirm you are a real person. We look for your face on camera and check a quick blink and smile — nothing is uploaded; the check runs on your phone."
+            "Confirm you are a real person with a quick blink and smile. A photo of your face is then " +
+                "analyzed securely by our verification server (Face++) — only the verified result is " +
+                "written to your profile, and only the server can write it."
         const val VERIFY_START = "Start verification"
         const val VERIFY_REDO = "Re-verify"
         const val VERIFY_PROMPT_CENTER = "Center your face in the circle"
         const val VERIFY_PROMPT_BLINK = "Now blink once"
         const val VERIFY_PROMPT_SMILE = "Great — now smile"
-        const val VERIFY_ANALYZING = "Checking…"
+        const val VERIFY_ANALYZING = "Checking your face…"
+        const val VERIFY_SERVER_CHECK = "Server verification in progress…"
         const val VERIFY_SUCCESS_TITLE = "You're verified!"
         const val VERIFY_SUCCESS_BODY = "Your profile now shows the verified badge."
         const val VERIFY_DETECTED_GENDER = "Detected"
         const val VERIFY_MULTIPLE_FACES = "Make sure you are alone in the frame."
         const val VERIFY_DONE = "Done"
-        const val VERIFY_STATUS_VERIFIED = "Face verified on-device"
+        const val VERIFY_STATUS_VERIFIED = "Face verified (server-checked)"
         const val GENDER = "Gender"
         const val DATE_OF_BIRTH = "Date of birth"
         const val DOB_HINT = "DD/MM/YYYY"
@@ -234,10 +237,27 @@ object TriggerStrings {
             "Face check passed, but saving the result failed. Check your connection and try again."
         const val VERIFICATION_CAMERA_FAILED =
             "Couldn't open the camera. Close other camera apps and try again."
+        const val VERIFICATION_SERVER_UNAVAILABLE =
+            "Verification server isn't reachable right now. Try again shortly."
+        const val VERIFICATION_SERVER_NOT_CONFIGURED =
+            "Server verification isn't configured yet. The app owner needs to deploy it first."
+        const val VERIFICATION_SERVER_BUSY =
+            "Verification server is busy. Please try again in a minute."
+        const val VERIFICATION_NO_FACE =
+            "No clear face detected. Retake with better lighting and try again."
+        const val POST_CREATE_FAILED =
+            "Couldn't publish the post. Check your connection and try again."
+        const val POST_EMPTY = "Write something before publishing."
+        const val FEED_LOAD_FAILED =
+            "Couldn't load the feed. Check your connection and try again."
+        const val NOTIFICATIONS_LOAD_FAILED =
+            "Couldn't load notifications. Check your connection and try again."
+        const val FOLLOW_ACTION_FAILED = "Couldn't update follow state. Try again."
     }
 
     /**
-     * Names of the HTTPS-callable Cloud Functions backing OTP flows and username renames.
+     * Names of the HTTPS-callable Cloud Functions backing OTP flows, username renames,
+     * and server-side face verification.
      * @author udit
      */
     object Functions {
@@ -246,6 +266,18 @@ object TriggerStrings {
         const val SIGN_UP_WITH_OTP = "signUpWithOtp"
         const val RESET_PASSWORD_WITH_OTP = "resetPasswordWithOtp"
         const val CHANGE_USERNAME = "changeUsername"
+        const val VERIFY_FACE = "verifyFace"
+    }
+
+    /**
+     * Notification payload type tokens stored under `Notifications/{uid}/{id}.type`.
+     * @author udit
+     */
+    object NotificationTypes {
+        const val FOLLOW = "follow"
+        const val LIKE = "like"
+        const val COMMENT = "comment"
+        const val SYSTEM = "system"
     }
 
     /**
@@ -293,6 +325,39 @@ object TriggerStrings {
         const val CHILD_DETECTED_GENDER = "gender"
         const val CHILD_CONFIDENCE = "confidence"
         const val CHILD_VERIFIED_AT = "verifiedAt"
+
+        const val NODE_POSTS = "Posts"
+        const val NODE_POST_LIKES = "PostLikes"
+        const val NODE_USER_LIKES = "UserLikes"
+        const val NODE_POST_COMMENTS = "PostComments"
+        const val NODE_FOLLOWERS = "Followers"
+        const val NODE_FOLLOWING = "Following"
+        const val NODE_NOTIFICATIONS = "Notifications"
+        const val NODE_SAVED_POSTS = "SavedPosts"
+        const val NODE_REPORTS = "Reports"
+
+        const val CHILD_AUTHOR_ID = "authorId"
+        const val CHILD_AUTHOR_NAME = "authorName"
+        const val CHILD_AUTHOR_USERNAME = "authorUsername"
+        const val CHILD_AUTHOR_AVATAR = "authorAvatar"
+        const val CHILD_AUTHOR_VERIFIED = "authorVerified"
+        const val CHILD_CONTENT = "content"
+        const val CHILD_TAGS = "tags"
+        const val CHILD_IMAGE_URI = "imageUri"
+        const val CHILD_CREATED_AT = "createdAt"
+        const val CHILD_LIKES_COUNT = "likesCount"
+        const val CHILD_COMMENTS_COUNT = "commentsCount"
+        const val CHILD_TYPE = "type"
+        const val CHILD_ACTOR_ID = "actorId"
+        const val CHILD_ACTOR_NAME = "actorName"
+        const val CHILD_ACTOR_AVATAR = "actorAvatar"
+        const val CHILD_POST_ID = "postId"
+        const val CHILD_TEXT = "text"
+        const val CHILD_READ = "read"
+        const val CHILD_REASON = "reason"
+
+        const val FEED_PAGE_SIZE = 50L
+        const val NOTIFICATIONS_PAGE_SIZE = 100L
 
         const val ORDER_BY_USERNAME = "username"
         const val ORDER_BY_SEARCH = "search"

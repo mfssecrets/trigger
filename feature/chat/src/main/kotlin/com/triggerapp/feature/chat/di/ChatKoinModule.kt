@@ -29,6 +29,11 @@ val chatFeatureModule = module {
         PeerProfileViewModel(
             savedStateHandle = handle,
             observeUserProfile = get(),
+            observeFollowState = get(),
+            observeFollowerIds = get(),
+            observeFollowingIds = get(),
+            fetchUsersByIds = get(),
+            setFollowing = get(),
         )
     }
 }

@@ -106,6 +106,8 @@ import com.triggerapp.feature.profile.ui.ProfileRoute
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import org.koin.androidx.compose.koinViewModel
+import com.triggerapp.feature.home.presentation.notifications.NotificationsViewModel
+import com.triggerapp.feature.home.presentation.notifications.NotificationsUiEvent
 
 private val AppBarBlack = Color.Black
 private val MutedTab = Color(0xFFAFACAC)
@@ -598,55 +600,11 @@ fun HomeRoute(
     )
 }
 
-private data class NotificationItem(
-    val id: String,
-    val title: String,
-    val body: String,
-    val timeAgo: String,
-    val isUnread: Boolean,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-)
-
 @Composable
-private fun NotificationsTab() {
-    var notifications by remember {
-        mutableStateOf(
-            listOf(
-                NotificationItem(
-                    id = "1",
-                    title = "New Message",
-                    body = "Jordan sent you a new message in Chats.",
-                    timeAgo = "5m ago",
-                    isUnread = true,
-                    icon = Icons.Filled.ChatBubble,
-                ),
-                NotificationItem(
-                    id = "2",
-                    title = "Post Liked",
-                    body = "Alex River liked your post in Feeds.",
-                    timeAgo = "25m ago",
-                    isUnread = true,
-                    icon = Icons.Filled.Favorite,
-                ),
-                NotificationItem(
-                    id = "3",
-                    title = "New Connection",
-                    body = "Cleopatra accepted your conversation invite.",
-                    timeAgo = "2h ago",
-                    isUnread = false,
-                    icon = Icons.Filled.Group,
-                ),
-                NotificationItem(
-                    id = "4",
-                    title = "System Verification",
-                    body = "Your account security status was updated.",
-                    timeAgo = "1d ago",
-                    isUnread = false,
-                    icon = Icons.Outlined.Verified,
-                ),
-            ),
-        )
-    }
+private fun NotificationsTab(
+    viewModel: NotificationsViewModel = koinViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -662,34 +620,84 @@ private fun NotificationsTab() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "${notifications.count { it.isUnread }} unread notifications",
+                "${state.unreadCount} unread notifications",
                 color = Color(0xFFAFACAC),
                 fontSize = 13.sp,
             )
             TextButton(
-                onClick = {
-                    notifications = notifications.map { it.copy(isUnread = false) }
-                },
+                onClick = { viewModel.onEvent(NotificationsUiEvent.MarkAllRead) },
+                enabled = state.unreadCount > 0 && !state.isMarkingRead,
             ) {
-                Text("Mark all read", color = TabActive, fontSize = 13.sp)
+                Text(
+                    if (state.isMarkingRead) "Marking…" else "Mark all read",
+                    color = TabActive,
+                    fontSize = 13.sp,
+                )
             }
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(notifications, key = { it.id }) { item ->
-                NotificationRowCard(item = item)
-                Spacer(Modifier.height(8.dp))
+        when {
+            state.loadError != null -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        state.loadError.orEmpty(),
+                        color = Color(0xFFAFACAC),
+                        fontSize = 14.sp,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(onClick = { viewModel.onEvent(NotificationsUiEvent.Retry) }) {
+                        Text("Try again", color = TabActive, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            state.isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = TabActive)
+                }
+            }
+            state.notifications.isEmpty() -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        "No notifications yet",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Follows, likes, comments and verification updates will appear here.",
+                        color = Color(0xFF797B7E),
+                        fontSize = 13.sp,
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(state.notifications, key = { it.id }) { item ->
+                        NotificationRowCard(item = item)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun NotificationRowCard(item: NotificationItem) {
+private fun NotificationRowCard(item: com.triggerapp.domain.model.SocialNotification) {
+    val unread = !item.read
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (item.isUnread) Color(0xFF1C2229) else Color(0xFF15191E),
+            containerColor = if (unread) Color(0xFF1C2229) else Color(0xFF15191E),
         ),
         shape = RoundedCornerShape(10.dp),
     ) {
@@ -703,13 +711,18 @@ private fun NotificationRowCard(item: NotificationItem) {
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(if (item.isUnread) Color(0xFF1F2B23) else Color(0xFF26303A)),
+                    .background(if (unread) Color(0xFF1F2B23) else Color(0xFF26303A)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = item.icon,
+                    imageVector = when {
+                        item.isFollow -> Icons.Filled.Group
+                        item.isLike -> Icons.Filled.Favorite
+                        item.isComment -> Icons.Filled.ChatBubble
+                        else -> Icons.Outlined.Verified
+                    },
                     contentDescription = null,
-                    tint = if (item.isUnread) TabActive else Color(0xFFAFACAC),
+                    tint = if (unread) TabActive else Color(0xFFAFACAC),
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -720,22 +733,26 @@ private fun NotificationRowCard(item: NotificationItem) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        item.title,
+                        if (item.isSystem) "Trigger" else item.actorName.ifBlank { "Someone" },
                         color = Color.White,
-                        fontWeight = if (item.isUnread) FontWeight.Bold else FontWeight.SemiBold,
+                        fontWeight = if (unread) FontWeight.Bold else FontWeight.SemiBold,
                         fontSize = 14.sp,
                     )
-                    Text(item.timeAgo, color = Color(0xFF797B7E), fontSize = 11.sp)
+                    Text(
+                        com.triggerapp.feature.home.ui.feed.timeAgoLabel(item.createdAt),
+                        color = Color(0xFF797B7E),
+                        fontSize = 11.sp,
+                    )
                 }
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    item.body,
-                    color = if (item.isUnread) Color(0xFFCFD8DC) else Color(0xFF90A4AE),
+                    item.text,
+                    color = if (unread) Color(0xFFCFD8DC) else Color(0xFF90A4AE),
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
                 )
             }
-            if (item.isUnread) {
+            if (unread) {
                 Spacer(Modifier.width(8.dp))
                 Box(
                     modifier = Modifier

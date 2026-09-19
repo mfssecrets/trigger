@@ -26,8 +26,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -40,7 +38,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,32 +53,51 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.triggerapp.core.ui.TriggerProfileAvatar
 import com.triggerapp.core.ui.theme.TriggerAccent
+import com.triggerapp.domain.model.SocialComment
 import kotlinx.coroutines.launch
 
 private val SheetBackground = Color(0xFF14191F)
 private val CommentSurface = Color(0xFF1B222B)
 private val TextMuted = Color(0xFFAFACAC)
-private val LikeHeart = Color(0xFFFF4868)
 
 /**
- * Production-ready bottom sheet for viewing, liking, and adding comments to a feed post.
+ * Bottom sheet for viewing and adding comments to a live feed post.
+ * Comments stream in realtime from `PostComments/{postId}`; every submission is
+ * written to the backend and bumps the post's comment counter.
+ *
+ * @param postId Post whose comments are shown (for keys).
+ * @param commentsCount Live denormalized comment counter from the post row.
+ * @param comments Live comment rows (oldest first).
  * @author triggerapp
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedCommentsSheet(
-    post: FeedPost,
-    currentUserName: String,
+    postId: String,
+    commentsCount: Long,
+    comments: List<SocialComment>,
     currentUserHandle: String,
     currentUserAvatarUrl: String,
     onDismiss: () -> Unit,
     onAddComment: (String) -> Unit,
-    onLikeComment: (commentId: String) -> Unit,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
     var newCommentText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    fun submitComment() {
+        val text = newCommentText.trim()
+        if (text.isNotEmpty()) {
+            onAddComment(text)
+            newCommentText = ""
+            scope.launch {
+                if (comments.isNotEmpty()) {
+                    listState.animateScrollToItem(comments.size - 1)
+                }
+            }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -125,7 +141,7 @@ fun FeedCommentsSheet(
                         shape = RoundedCornerShape(12.dp),
                     ) {
                         Text(
-                            text = "${post.comments.size}",
+                            text = "$commentsCount",
                             color = TriggerAccent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -146,7 +162,7 @@ fun FeedCommentsSheet(
             HorizontalDivider(color = Color(0xFF232D38), thickness = 0.8.dp)
 
             // Comments List
-            if (post.comments.isEmpty()) {
+            if (comments.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -177,16 +193,13 @@ fun FeedCommentsSheet(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    items(post.comments, key = { it.id }) { comment ->
-                        CommentItemRow(
-                            comment = comment,
-                            onLike = { onLikeComment(comment.id) },
-                        )
+                    items(comments, key = { it.id }) { comment ->
+                        CommentItemRow(comment = comment)
                     }
                 }
             }
 
-            // Quick Reaction Emojis
+            // Quick Reaction Emojis (append to the input, submitted explicitly)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -248,36 +261,12 @@ fun FeedCommentsSheet(
                     ),
                     maxLines = 3,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            val text = newCommentText.trim()
-                            if (text.isNotEmpty()) {
-                                onAddComment(text)
-                                newCommentText = ""
-                                scope.launch {
-                                    if (post.comments.isNotEmpty()) {
-                                        listState.animateScrollToItem(post.comments.size - 1)
-                                    }
-                                }
-                            }
-                        },
-                    ),
+                    keyboardActions = KeyboardActions(onSend = { submitComment() }),
                 )
                 Spacer(Modifier.width(8.dp))
                 val canSend = newCommentText.trim().isNotEmpty()
                 IconButton(
-                    onClick = {
-                        val text = newCommentText.trim()
-                        if (text.isNotEmpty()) {
-                            onAddComment(text)
-                            newCommentText = ""
-                            scope.launch {
-                                if (post.comments.isNotEmpty()) {
-                                    listState.animateScrollToItem(post.comments.size - 1)
-                                }
-                            }
-                        }
-                    },
+                    onClick = { submitComment() },
                     enabled = canSend,
                     modifier = Modifier
                         .size(38.dp)
@@ -298,15 +287,14 @@ fun FeedCommentsSheet(
 
 @Composable
 private fun CommentItemRow(
-    comment: FeedComment,
-    onLike: () -> Unit,
+    comment: SocialComment,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top,
     ) {
         TriggerProfileAvatar(
-            imageUrl = comment.authorAvatarUrl,
+            imageUrl = comment.authorAvatar,
             modifier = Modifier
                 .size(34.dp)
                 .clip(CircleShape),
@@ -322,13 +310,13 @@ private fun CommentItemRow(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = comment.authorHandle,
+                    text = "@${comment.authorUsername}",
                     color = TriggerAccent,
                     fontSize = 12.sp,
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = "• ${comment.timestamp}",
+                    text = "• ${timeAgoLabel(comment.createdAt)}",
                     color = TextMuted,
                     fontSize = 11.sp,
                 )
@@ -341,24 +329,31 @@ private fun CommentItemRow(
                 lineHeight = 18.sp,
             )
         }
-        Spacer(Modifier.width(8.dp))
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.clickable { onLike() },
-        ) {
-            Icon(
-                imageVector = if (comment.isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                contentDescription = "Like comment",
-                tint = if (comment.isLiked) LikeHeart else TextMuted,
-                modifier = Modifier.size(16.dp),
-            )
-            if (comment.likesCount > 0) {
-                Text(
-                    text = "${comment.likesCount}",
-                    color = if (comment.isLiked) LikeHeart else TextMuted,
-                    fontSize = 11.sp,
-                )
-            }
+    }
+}
+
+/**
+ * Formats an epoch-millis timestamp as a compact relative label ("Just now", "18m ago",
+ * "3h ago", "5d ago", or a DD/MM date for older rows). Shared by feed surfaces.
+ *
+ * @param createdAt Epoch millis of the row.
+ * @param now Reference clock (defaults to the device time; injectable for tests).
+ * @return Human-readable relative time label.
+ * @author udit
+ */
+fun timeAgoLabel(createdAt: Long, now: Long = System.currentTimeMillis()): String {
+    if (createdAt <= 0L) return "Just now"
+    val diffSeconds = (now - createdAt) / 1000
+    return when {
+        diffSeconds < 60 -> "Just now"
+        diffSeconds < 3600 -> "${diffSeconds / 60}m ago"
+        diffSeconds < 86_400 -> "${diffSeconds / 3600}h ago"
+        diffSeconds < 7 * 86_400 -> "${diffSeconds / 86_400}d ago"
+        else -> {
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = createdAt }
+            val d = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            val m = cal.get(java.util.Calendar.MONTH) + 1
+            String.format(java.util.Locale.US, "%02d/%02d", d, m)
         }
     }
 }

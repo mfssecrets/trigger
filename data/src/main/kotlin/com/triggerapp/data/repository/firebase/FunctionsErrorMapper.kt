@@ -22,6 +22,13 @@ private object FunctionErrorTokens {
     const val SERVICE_NOT_CONFIGURED = "EMAIL_SERVICE_NOT_CONFIGURED"
     const val NOT_SIGNED_IN = "NOT_SIGNED_IN"
     const val USERNAME_UNCHANGED = "USERNAME_UNCHANGED"
+
+    // verifyFace (server-side face verification) error tokens
+    const val VERIFY_NOT_CONFIGURED = "VERIFY_NOT_CONFIGURED"
+    const val VERIFY_NO_FACE = "VERIFY_NO_FACE"
+    const val VERIFY_BAD_IMAGE = "VERIFY_BAD_IMAGE"
+    const val VERIFY_UPSTREAM = "VERIFY_UPSTREAM_FAILED"
+    const val VERIFY_COOLDOWN = "VERIFY_COOLDOWN"
 }
 
 /**
@@ -53,6 +60,11 @@ fun Throwable.findFunctionsTokenMessage(): String? {
                 FunctionErrorTokens.SERVICE_NOT_CONFIGURED -> TriggerStrings.Errors.OTP_SERVICE_NOT_CONFIGURED
                 FunctionErrorTokens.NOT_SIGNED_IN -> TriggerStrings.Errors.NOT_SIGNED_IN
                 FunctionErrorTokens.USERNAME_UNCHANGED -> TriggerStrings.Errors.USERNAME_UNCHANGED
+                FunctionErrorTokens.VERIFY_NOT_CONFIGURED -> TriggerStrings.Errors.VERIFICATION_SERVER_NOT_CONFIGURED
+                FunctionErrorTokens.VERIFY_NO_FACE -> TriggerStrings.Errors.VERIFICATION_NO_FACE
+                FunctionErrorTokens.VERIFY_BAD_IMAGE -> TriggerStrings.Errors.VERIFICATION_FAILED
+                FunctionErrorTokens.VERIFY_UPSTREAM -> TriggerStrings.Errors.VERIFICATION_SERVER_BUSY
+                FunctionErrorTokens.VERIFY_COOLDOWN -> TriggerStrings.Errors.VERIFICATION_SERVER_BUSY
                 else -> null
             }
         }

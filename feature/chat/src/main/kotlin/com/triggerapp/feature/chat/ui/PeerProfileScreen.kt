@@ -90,16 +90,6 @@ import org.koin.androidx.compose.koinViewModel
 import kotlin.math.abs
 
 /**
- * Modern Instagram-style Follow States for other user profiles.
- */
-enum class PeerFollowState(val label: String) {
-    FOLLOW("Follow"),
-    FOLLOWING("Following"),
-    FOLLOW_BACK("Follow Back"),
-    REQUESTED("Requested"),
-}
-
-/**
  * Peer profile screen UI with Instagram modern following, followers section,
  * dynamic follow/following/followback/requested actions, and direct message button.
  *
@@ -116,6 +106,7 @@ internal fun PeerProfileScreenContent(
     onBack: () -> Unit,
     onOpenChat: (peerId: String) -> Unit = {},
     onRetry: () -> Unit,
+    onToggleFollow: () -> Unit = {},
 ) {
     val user = ui.user
     val loadError = ui.loadError
@@ -167,21 +158,8 @@ internal fun PeerProfileScreenContent(
             when {
                 user != null -> {
                     val u = user
-                    val userHash = abs(u.id.hashCode())
-                    val baseFollowers = 800 + (userHash % 600)
-                    val baseFollowing = 240 + ((userHash * 3) % 300)
-                    val postsCount = 12 + ((userHash * 7) % 20)
-
-                    var followState by rememberSaveable(u.id) {
-                        val initial = when (userHash % 4) {
-                            0 -> PeerFollowState.FOLLOW_BACK
-                            1 -> PeerFollowState.FOLLOWING
-                            2 -> PeerFollowState.REQUESTED
-                            else -> PeerFollowState.FOLLOW
-                        }
-                        mutableStateOf(initial)
-                    }
-                    var followerDelta by rememberSaveable(u.id) { mutableIntStateOf(0) }
+                    val follow = ui.follow
+                    val isFollowing = follow.isFollowing
                     var showFollowDropdown by remember { mutableStateOf(false) }
 
                     Column(
@@ -270,24 +248,7 @@ internal fun PeerProfileScreenContent(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             PeerStatColumn(
-                                count = "$postsCount",
-                                label = "Posts",
-                                onClick = {},
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(26.dp)
-                                    .background(Color(0xFF2A3441)),
-                            )
-                            val displayFollowers = baseFollowers + followerDelta
-                            val formattedFollowers = if (displayFollowers >= 1000) {
-                                String.format(java.util.Locale.US, "%.1fk", displayFollowers / 1000.0)
-                            } else {
-                                "$displayFollowers"
-                            }
-                            PeerStatColumn(
-                                count = formattedFollowers,
+                                count = "${follow.followersCount}",
                                 label = "Followers",
                                 onClick = { showFollowersSheet = true },
                             )
@@ -298,7 +259,7 @@ internal fun PeerProfileScreenContent(
                                     .background(Color(0xFF2A3441)),
                             )
                             PeerStatColumn(
-                                count = "$baseFollowing",
+                                count = "${follow.followingCount}",
                                 label = "Following",
                                 onClick = { showFollowingSheet = true },
                             )
@@ -316,9 +277,9 @@ internal fun PeerProfileScreenContent(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // Follow / Following / Follow Back / Requested Button
+                            // Follow / Following / Follow Back button (live RTDB state)
                             Box(modifier = Modifier.weight(1f)) {
-                                val isPrimary = followState == PeerFollowState.FOLLOW || followState == PeerFollowState.FOLLOW_BACK
+                                val isPrimary = !isFollowing
                                 val buttonBg by animateColorAsState(
                                     targetValue = if (isPrimary) TriggerAccent else Color(0xFF242C35),
                                     animationSpec = tween(250),
@@ -328,20 +289,13 @@ internal fun PeerProfileScreenContent(
 
                                 Surface(
                                     onClick = {
-                                        when (followState) {
-                                            PeerFollowState.FOLLOW, PeerFollowState.FOLLOW_BACK -> {
-                                                followState = PeerFollowState.FOLLOWING
-                                                followerDelta = 1
-                                            }
-                                            PeerFollowState.FOLLOWING -> {
-                                                showFollowDropdown = true
-                                            }
-                                            PeerFollowState.REQUESTED -> {
-                                                followState = PeerFollowState.FOLLOW
-                                                followerDelta = 0
-                                            }
+                                        if (isFollowing) {
+                                            showFollowDropdown = true
+                                        } else {
+                                            onToggleFollow()
                                         }
                                     },
+                                    enabled = !ui.followBusy,
                                     shape = RoundedCornerShape(8.dp),
                                     color = buttonBg,
                                     border = if (isPrimary) null else BorderStroke(1.dp, Color(0xFF384351)),
@@ -354,30 +308,20 @@ internal fun PeerProfileScreenContent(
                                         horizontalArrangement = Arrangement.Center,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        when (followState) {
-                                            PeerFollowState.FOLLOW -> {
-                                                Text(
-                                                    text = "Follow",
-                                                    color = textColor,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                )
-                                            }
-                                            PeerFollowState.FOLLOW_BACK -> {
-                                                Text(
-                                                    text = "Follow Back",
-                                                    color = textColor,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                )
-                                            }
-                                            PeerFollowState.FOLLOWING -> {
-                                                Text(
-                                                    text = "Following",
-                                                    color = textColor,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                )
+                                        if (ui.followBusy) {
+                                            CircularProgressIndicator(
+                                                color = textColor,
+                                                strokeWidth = 2.dp,
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                        } else {
+                                            Text(
+                                                text = follow.label,
+                                                color = textColor,
+                                                fontSize = 14.sp,
+                                                fontWeight = if (isPrimary) FontWeight.Bold else FontWeight.SemiBold,
+                                            )
+                                            if (isFollowing) {
                                                 Spacer(Modifier.width(4.dp))
                                                 Icon(
                                                     imageVector = Icons.Default.Check,
@@ -392,69 +336,21 @@ internal fun PeerProfileScreenContent(
                                                     modifier = Modifier.size(16.dp),
                                                 )
                                             }
-                                            PeerFollowState.REQUESTED -> {
-                                                Text(
-                                                    text = "Requested",
-                                                    color = Color(0xFFA0AEC0),
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                )
-                                                Spacer(Modifier.width(4.dp))
-                                                Icon(
-                                                    imageVector = Icons.Default.Schedule,
-                                                    contentDescription = null,
-                                                    tint = Color(0xFFA0AEC0),
-                                                    modifier = Modifier.size(14.dp),
-                                                )
-                                            }
                                         }
                                     }
                                 }
 
-                                // Dropdown to manually switch to any of the 4 requested states for testing
+                                // Unfollow dropdown (only while following)
                                 DropdownMenu(
                                     expanded = showFollowDropdown,
                                     onDismissRequest = { showFollowDropdown = false },
                                     modifier = Modifier.background(Color(0xFF222831)),
                                 ) {
                                     DropdownMenuItem(
-                                        text = { Text("Follow", color = Color.White) },
-                                        onClick = {
-                                            followState = PeerFollowState.FOLLOW
-                                            followerDelta = 0
-                                            showFollowDropdown = false
-                                        },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Following", color = TriggerAccent) },
-                                        onClick = {
-                                            followState = PeerFollowState.FOLLOWING
-                                            followerDelta = 1
-                                            showFollowDropdown = false
-                                        },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Follow Back", color = Color.White) },
-                                        onClick = {
-                                            followState = PeerFollowState.FOLLOW_BACK
-                                            followerDelta = 0
-                                            showFollowDropdown = false
-                                        },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Requested", color = Color(0xFFA0AEC0)) },
-                                        onClick = {
-                                            followState = PeerFollowState.REQUESTED
-                                            followerDelta = 0
-                                            showFollowDropdown = false
-                                        },
-                                    )
-                                    DropdownMenuItem(
                                         text = { Text("Unfollow", color = Color(0xFFFF5252)) },
                                         onClick = {
-                                            followState = PeerFollowState.FOLLOW
-                                            followerDelta = 0
                                             showFollowDropdown = false
+                                            onToggleFollow()
                                         },
                                     )
                                 }
@@ -509,28 +405,6 @@ internal fun PeerProfileScreenContent(
                             )
                         }
 
-                        Spacer(Modifier.height(16.dp))
-
-                        // Social Mutual Connections Note
-                        Surface(
-                            color = Color(0xFF1B222A),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = "👥 Followed by jordan_dev, alex_river and 8 others you know",
-                                    color = Color(0xFF90A4AE),
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp,
-                                )
-                            }
-                        }
                     }
                 }
                 loadError != null -> {
@@ -611,18 +485,20 @@ internal fun PeerProfileScreenContent(
             }
         }
 
-        // Followers Bottom Sheet
+        // Followers Bottom Sheet (real user list resolved from Followers/{uid})
         if (showFollowersSheet) {
             PeerConnectionsSheet(
                 title = "Followers",
+                users = ui.followersUsers,
                 onDismiss = { showFollowersSheet = false },
             )
         }
 
-        // Following Bottom Sheet
+        // Following Bottom Sheet (real user list resolved from Following/{uid})
         if (showFollowingSheet) {
             PeerConnectionsSheet(
                 title = "Following",
+                users = ui.followingUsers,
                 onDismiss = { showFollowingSheet = false },
             )
         }
@@ -663,17 +539,9 @@ private fun PeerStatColumn(
 @Composable
 private fun PeerConnectionsSheet(
     title: String,
+    users: List<User>,
     onDismiss: () -> Unit,
 ) {
-    val sampleUsers = remember {
-        listOf(
-            Triple("Jordan Hayes", "@jordan_dev", "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200"),
-            Triple("Alex River", "@alex_river", "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200"),
-            Triple("Cleopatra Vance", "@cleopatra", "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200"),
-            Triple("Sam Coder", "@sam_coder", "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200"),
-        )
-    }
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1C2229),
@@ -690,40 +558,50 @@ private fun PeerConnectionsSheet(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp),
             )
-            sampleUsers.forEach { (name, handle, avatar) ->
-                var isFollowed by remember { mutableStateOf(true) }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TriggerProfileAvatar(
-                        imageUrl = avatar,
+            if (users.isEmpty()) {
+                Text(
+                    text = "Nobody here yet.",
+                    color = Color(0xFF90A4AE),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(vertical = 16.dp),
+                )
+            } else {
+                users.forEach { person ->
+                    Row(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text(handle, color = Color(0xFF90A4AE), fontSize = 12.sp)
-                    }
-                    Surface(
-                        onClick = { isFollowed = !isFollowed },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isFollowed) Color(0xFF26303B) else TriggerAccent,
-                        modifier = Modifier.height(32.dp),
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.padding(horizontal = 14.dp),
-                        ) {
+                        TriggerProfileAvatar(
+                            imageUrl = person.imageUrl,
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    person.effectiveDisplayName,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                )
+                                if (person.isFaceVerified) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Filled.Verified,
+                                        contentDescription = "Verified",
+                                        tint = TriggerAccent,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+                            }
                             Text(
-                                text = if (isFollowed) "Following" else "Follow",
-                                color = if (isFollowed) Color.White else Color.Black,
+                                "@${person.username}",
+                                color = Color(0xFF90A4AE),
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
                             )
                         }
                     }
@@ -755,6 +633,7 @@ fun PeerProfileRoute(
         onBack = onBack,
         onOpenChat = onOpenChat,
         onRetry = { viewModel.onEvent(PeerProfileUiEvent.Retry) },
+        onToggleFollow = { viewModel.onEvent(PeerProfileUiEvent.ToggleFollow) },
     )
 }
 

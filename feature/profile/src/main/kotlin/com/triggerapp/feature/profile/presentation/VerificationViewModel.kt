@@ -2,12 +2,14 @@ package com.triggerapp.feature.profile.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.graphics.Bitmap
+import android.util.Base64
 import com.triggerapp.core.common.errors.userFacingMessage
 import com.triggerapp.core.strings.TriggerStrings
 import com.triggerapp.domain.model.FaceVerification
 import com.triggerapp.domain.usecase.connectivity.ObserveNetworkOnlineUseCase
 import com.triggerapp.domain.usecase.user.ObserveCurrentUserUseCase
-import com.triggerapp.domain.usecase.user.SaveFaceVerificationUseCase
+import com.triggerapp.domain.usecase.user.VerifyFaceUseCase
 import com.triggerapp.feature.profile.verification.GenderClassifier
 import com.triggerapp.feature.profile.verification.LivenessPhase
 import kotlinx.coroutines.Dispatchers
@@ -21,23 +23,29 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 
 /**
  * Face-verification [ViewModel]: reads the stored status, drives the liveness stage
- * machine fed by [com.triggerapp.feature.profile.verification.FaceLivenessAnalyzer],
- * classifies the captured face crop on-device with [GenderClassifier], and persists the
- * structured result through [SaveFaceVerificationUseCase]. The selfie bitmap itself is
- * never uploaded — only the boolean/label/confidence payload reaches the database.
+ * machine fed by [com.triggerapp.feature.profile.verification.FaceLivenessAnalyzer], and
+ * runs a two-step check:
+ *
+ * 1. On-device gender pre-check with [GenderClassifier] — a free fail-fast gate so bad
+ *    captures never reach (or spend) server quota.
+ * 2. Server verification — the face crop is submitted to the `verifyFace` Cloud Function,
+ *    which runs Face++ detection and writes `Users/{uid}/verification` itself. The
+ *    client can no longer write that node (RTDB rules deny it), so the badge is
+ *    tamper-proof and only the trusted backend can set it.
  *
  * @param observeCurrentUser Supplies the current verification status.
- * @param saveFaceVerification Writes the verification result.
- * @param observeNetworkOnline Connectivity guard for the final save.
+ * @param verifyFace Submits the face crop to the server.
+ * @param observeNetworkOnline Connectivity guard for the server round-trip.
  * @param classifier On-device gender classifier (Koin factory scope; closed with the VM).
  * @author udit
  */
 class VerificationViewModel(
     private val observeCurrentUser: ObserveCurrentUserUseCase,
-    private val saveFaceVerification: SaveFaceVerificationUseCase,
+    private val verifyFace: VerifyFaceUseCase,
     private val observeNetworkOnline: ObserveNetworkOnlineUseCase,
     private val classifier: GenderClassifier,
 ) : ViewModel() {
@@ -150,6 +158,7 @@ class VerificationViewModel(
         val preview = crop
         _state.update { it.copy(stage = VerificationStage.ANALYZING, capturedPreview = preview) }
         viewModelScope.launch {
+            // Step 1: free on-device pre-check — bad captures never reach the server.
             val result = withContext(Dispatchers.Default) {
                 classifier.classify(crop)
             }
@@ -162,20 +171,15 @@ class VerificationViewModel(
                 fail(TriggerStrings.Errors.VERIFICATION_SAVE_FAILED)
                 return@launch
             }
+            // Step 2: server check — Face++ runs server-side; the function writes the badge.
             _state.update { it.copy(stage = VerificationStage.SAVING) }
-            val genderLabel = if (result.isFemale) "female" else "male"
-            val saved = saveFaceVerification(genderLabel, result.confidence)
-            saved.fold(
-                onSuccess = {
+            val base64 = withContext(Dispatchers.IO) { crop.toJpegBase64() }
+            verifyFace(base64).fold(
+                onSuccess = { verification ->
                     _state.update {
                         it.copy(
                             stage = VerificationStage.SUCCESS,
-                            result = FaceVerification(
-                                faceVerified = true,
-                                gender = genderLabel,
-                                confidence = result.confidence,
-                                verifiedAt = System.currentTimeMillis(),
-                            ),
+                            result = verification,
                         )
                     }
                 },
@@ -184,14 +188,33 @@ class VerificationViewModel(
                         it.copy(
                             stage = VerificationStage.FAILED,
                             error = e.userFacingMessage(
-                                offlineFallback = TriggerStrings.Errors.VERIFICATION_SAVE_FAILED,
-                                genericFallback = TriggerStrings.Errors.VERIFICATION_SAVE_FAILED,
+                                offlineFallback = TriggerStrings.Errors.VERIFICATION_SERVER_UNAVAILABLE,
+                                genericFallback = TriggerStrings.Errors.VERIFICATION_SERVER_UNAVAILABLE,
                             ),
                         )
                     }
                 },
             )
         }
+    }
+
+    /** Encodes the face crop as a compact base64 JPEG for the server round-trip. */
+    private fun android.graphics.Bitmap.toJpegBase64(): String {
+        val largest = maxOf(width, height)
+        val toEncode = if (largest > UPLOAD_MAX_DIMENSION) {
+            val scale = UPLOAD_MAX_DIMENSION.toFloat() / largest
+            Bitmap.createScaledBitmap(
+                this,
+                (width * scale).toInt().coerceAtLeast(1),
+                (height * scale).toInt().coerceAtLeast(1),
+                true,
+            )
+        } else {
+            this
+        }
+        val output = ByteArrayOutputStream()
+        toEncode.compress(Bitmap.CompressFormat.JPEG, UPLOAD_JPEG_QUALITY, output)
+        return Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
     }
 
     private fun fail(message: String) {
@@ -212,5 +235,11 @@ class VerificationViewModel(
 
         /** Whole liveness challenge must finish within this window. */
         const val LIVENESS_TIMEOUT_MS = 45_000L
+
+        /** Longest edge uploaded to the server (keeps the payload small + fast). */
+        const val UPLOAD_MAX_DIMENSION = 640
+
+        /** JPEG quality for the uploaded crop. */
+        const val UPLOAD_JPEG_QUALITY = 88
     }
 }

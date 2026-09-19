@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,6 +64,8 @@ import coil.compose.AsyncImage
 import com.triggerapp.core.ui.TriggerProfileAvatar
 import com.triggerapp.core.ui.theme.TriggerAccent
 import com.triggerapp.core.ui.theme.TriggerPurple
+import com.triggerapp.domain.model.SocialComment
+import com.triggerapp.domain.model.SocialPost
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -75,16 +76,24 @@ private val TextSecondary = Color(0xFFC7CBD1)
 private val LikeActiveColor = Color(0xFFFF4868)
 
 /**
- * Production-ready, unique social feed card for the Trigger application.
- * Features animated double-tap like, interactive comment sheet launcher,
- * bookmarking, rich caption formatting, and custom pulse badges.
+ * Live feed post card backed by a RTDB [SocialPost].
+ * Features animated double-tap like, comments sheet launcher, bookmarking,
+ * rich caption formatting, and an options menu whose actions hit the backend.
  *
+ * @param post Live post row (author data denormalized at publish time).
+ * @param isLiked Whether the current user likes this post.
+ * @param isSaved Whether the current user saved this post.
+ * @param timeAgo Pre-formatted relative timestamp label.
+ * @param latestComment Most recent comment (preview row), or null.
  * @author triggerapp
  */
 @Composable
 fun FeedPostCard(
-    post: FeedPost,
-    currentUserId: String,
+    post: SocialPost,
+    isLiked: Boolean,
+    isSaved: Boolean,
+    timeAgo: String,
+    latestComment: SocialComment?,
     onLikeToggle: (postId: String) -> Unit,
     onBookmarkToggle: (postId: String) -> Unit,
     onOpenComments: (postId: String) -> Unit,
@@ -100,7 +109,7 @@ fun FeedPostCard(
     val heartScale = remember { Animatable(0f) }
 
     fun triggerDoubleTapLike() {
-        if (!post.isLiked) {
+        if (!isLiked) {
             onLikeToggle(post.id)
         }
         coroutineScope.launch {
@@ -149,7 +158,7 @@ fun FeedPostCard(
                             .padding(2.5.dp),
                     ) {
                         TriggerProfileAvatar(
-                            imageUrl = post.authorAvatarUrl,
+                            imageUrl = post.authorAvatar,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape),
@@ -168,7 +177,7 @@ fun FeedPostCard(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            if (post.isVerified) {
+                            if (post.authorVerified) {
                                 Spacer(Modifier.width(4.dp))
                                 Icon(
                                     imageVector = Icons.Outlined.Verified,
@@ -181,45 +190,24 @@ fun FeedPostCard(
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = post.authorHandle,
+                                text = "@${post.authorUsername}",
                                 color = TriggerAccent,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = " • ${post.timeAgo}",
+                                text = " • $timeAgo",
                                 color = TextMuted,
                                 fontSize = 11.sp,
                             )
-                            if (!post.location.isNullOrBlank()) {
-                                Text(
-                                    text = " • ${post.location}",
-                                    color = TextMuted,
-                                    fontSize = 11.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
                         }
                     }
                 }
 
-                // Header Pulse Badge & 3-dot Menu
+                // 3-dot Menu
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = TriggerAccent.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.padding(end = 4.dp),
-                    ) {
-                        Text(
-                            text = "⚡ ${post.pulseScore}",
-                            color = TriggerAccent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                        )
-                    }
-
                     Box {
                         IconButton(
                             onClick = { showMenu = true },
@@ -239,21 +227,14 @@ fun FeedPostCard(
                             modifier = Modifier.background(Color(0xFF1E2630)),
                         ) {
                             DropdownMenuItem(
-                                text = { Text(if (post.isSaved) "Remove from Saved" else "Save Post", color = Color.White) },
+                                text = { Text(if (isSaved) "Remove from Saved" else "Save Post", color = Color.White) },
                                 onClick = {
                                     showMenu = false
                                     onBookmarkToggle(post.id)
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Copy Link", color = Color.White) },
-                                onClick = {
-                                    showMenu = false
-                                    onOptionSelected("copy_link", post.id)
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Share via Chat", color = Color.White) },
+                                text = { Text("Share Post", color = Color.White) },
                                 onClick = {
                                     showMenu = false
                                     onSharePost(post.id)
@@ -279,7 +260,7 @@ fun FeedPostCard(
             }
 
             // Post Media (with Double-Tap to Like Support)
-            if (!post.imageUrl.isNullOrBlank()) {
+            if (!post.imageUri.isNullOrBlank()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -293,7 +274,7 @@ fun FeedPostCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     AsyncImage(
-                        model = post.imageUrl,
+                        model = post.imageUri,
                         contentDescription = "Post image",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
@@ -337,15 +318,15 @@ fun FeedPostCard(
                             .padding(horizontal = 6.dp, vertical = 6.dp),
                     ) {
                         Icon(
-                            imageVector = if (post.isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Like",
-                            tint = if (post.isLiked) LikeActiveColor else Color.White,
+                            tint = if (isLiked) LikeActiveColor else Color.White,
                             modifier = Modifier.size(24.dp),
                         )
                         Spacer(Modifier.width(5.dp))
                         Text(
                             text = "${post.likesCount}",
-                            color = if (post.isLiked) LikeActiveColor else Color.White,
+                            color = if (isLiked) LikeActiveColor else Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -368,7 +349,7 @@ fun FeedPostCard(
                         )
                         Spacer(Modifier.width(5.dp))
                         Text(
-                            text = "${post.comments.size}",
+                            text = "${post.commentsCount}",
                             color = Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -397,63 +378,23 @@ fun FeedPostCard(
                     modifier = Modifier.size(36.dp),
                 ) {
                     Icon(
-                        imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                        imageVector = if (isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                         contentDescription = "Save post",
-                        tint = if (post.isSaved) TriggerAccent else Color.White,
+                        tint = if (isSaved) TriggerAccent else Color.White,
                         modifier = Modifier.size(23.dp),
                     )
                 }
             }
 
-            // Likes breakdown row with mini avatar stack
+            // Real like counter line (live transaction-maintained count)
             if (post.likesCount > 0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (post.likedByAvatars.isNotEmpty()) {
-                        val avatarSize = 18.dp
-                        val overlapOffset = 6.dp
-                        val avatars = post.likedByAvatars.take(3)
-                        val totalWidth = avatarSize + (overlapOffset * (avatars.size - 1))
-                        Box(
-                            modifier = Modifier
-                                .width(totalWidth)
-                                .height(avatarSize)
-                                .padding(end = 4.dp),
-                        ) {
-                            avatars.forEachIndexed { index, avatarUrl ->
-                                Box(
-                                    modifier = Modifier
-                                        .offset(x = overlapOffset * index)
-                                        .size(avatarSize)
-                                        .border(1.dp, CardBackground, CircleShape),
-                                ) {
-                                    TriggerProfileAvatar(
-                                        imageUrl = avatarUrl,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(CircleShape),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    val summaryText = if (post.likedBySummary.isNotBlank()) {
-                        post.likedBySummary
-                    } else {
-                        "Liked by ${post.likesCount} people"
-                    }
-                    Text(
-                        text = summaryText,
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
+                Text(
+                    text = "Liked by ${post.likesCount} " + if (post.likesCount == 1L) "person" else "people",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp),
+                )
             }
 
             // Caption Section
@@ -464,7 +405,7 @@ fun FeedPostCard(
             ) {
                 val captionText = buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)) {
-                        append(post.authorHandle)
+                        append("@${post.authorUsername}")
                     }
                     append("  ")
                     withStyle(SpanStyle(color = Color(0xFFE3E7ED), fontSize = 13.sp)) {
@@ -512,10 +453,10 @@ fun FeedPostCard(
                 }
             }
 
-            // Comments Preview & Tap to Open Comments
-            if (post.comments.isNotEmpty()) {
+            // Latest comment preview & tap to open comments
+            if (latestComment != null && post.commentsCount > 0) {
                 Text(
-                    text = "View all ${post.comments.size} comments",
+                    text = "View all ${post.commentsCount} comments",
                     color = TextMuted,
                     fontSize = 12.sp,
                     modifier = Modifier
@@ -523,8 +464,6 @@ fun FeedPostCard(
                         .padding(horizontal = 14.dp, vertical = 4.dp),
                 )
 
-                // Top latest comment snippet
-                val topComment = post.comments.last()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -532,14 +471,14 @@ fun FeedPostCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = topComment.authorHandle,
+                        text = "@${latestComment.authorUsername}",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = topComment.text,
+                        text = latestComment.text,
                         color = TextSecondary,
                         fontSize = 12.sp,
                         maxLines = 1,
@@ -548,7 +487,7 @@ fun FeedPostCard(
                 }
             }
 
-            // Quick Inline Emoji Bar (production-friendly social feature)
+            // Quick Inline Emoji Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

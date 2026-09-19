@@ -13,6 +13,10 @@
         },
         "id": {
           ".validate": "newData.isString() && newData.val() == data.val()"
+        },
+        "verification": {
+          ".write": false,
+          ".validate": false
         }
       }
     },
@@ -44,6 +48,73 @@
       "$msgId": {
         ".validate": "newData.hasChildren(['receiverId', 'senderId', 'message', 'timestamp', 'seen']) && newData.child('senderId').isString() && newData.child('receiverId').isString() && newData.child('message').isString() && newData.child('timestamp').isString() && newData.child('seen').isBoolean()",
         ".write": "auth != null && ((!data.exists() && newData.child('senderId').val() === auth.uid) || (data.exists() && data.child('receiverId').val() === auth.uid && newData.child('senderId').val() === data.child('senderId').val() && newData.child('receiverId').val() === data.child('receiverId').val() && newData.child('message').val() === data.child('message').val() && newData.child('timestamp').val() === data.child('timestamp').val() && newData.child('seen').isBoolean()))"
+      }
+    },
+    "Posts": {
+      ".read": "auth != null",
+      ".indexOn": ["createdAt"],
+      "$postId": {
+        ".write": "auth != null && ((!data.exists() && newData.child('authorId').val() === auth.uid) || (data.exists() && data.child('authorId').val() === auth.uid))"
+      }
+    },
+    "PostLikes": {
+      ".read": "auth != null",
+      "$postId": {
+        "$likerId": {
+          ".write": "auth != null && auth.uid === $likerId"
+        }
+      }
+    },
+    "UserLikes": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$postId": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "PostComments": {
+      ".read": "auth != null",
+      "$postId": {
+        "$commentId": {
+          ".write": "auth != null && ((!data.exists() && newData.child('authorId').val() === auth.uid) || (data.exists() && data.child('authorId').val() === auth.uid))"
+        }
+      }
+    },
+    "Followers": {
+      ".read": "auth != null",
+      "$userId": {
+        "$followerId": {
+          ".write": "auth != null && auth.uid === $followerId"
+        }
+      }
+    },
+    "Following": {
+      ".read": "auth != null",
+      "$userId": {
+        "$targetId": {
+          ".write": "auth != null && auth.uid === $userId"
+        }
+      }
+    },
+    "Notifications": {
+      "$recipientId": {
+        ".read": "auth != null && auth.uid === $recipientId",
+        "$notificationId": {
+          ".write": "auth != null && (auth.uid === $recipientId || !data.exists())"
+        }
+      }
+    },
+    "SavedPosts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "Reports": {
+      ".read": false,
+      "$reportId": {
+        ".write": "auth != null && !data.exists()"
       }
     }
   }

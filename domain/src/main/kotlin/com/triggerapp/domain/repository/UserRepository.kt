@@ -1,5 +1,6 @@
 package com.triggerapp.domain.repository
 
+import com.triggerapp.domain.model.FaceVerification
 import com.triggerapp.domain.model.PagedUsersResult
 import com.triggerapp.domain.model.User
 import com.triggerapp.domain.model.UserListCursor
@@ -121,15 +122,16 @@ interface UserRepository {
     suspend fun updateProfileFields(fields: Map<String, String>): Result<Unit>
 
     /**
-     * Persists the on-device face-verification result for the signed-in user under
-     * `Users/{uid}/verification` (faceVerified / gender / confidence / verifiedAt).
+     * Submits the liveness-passed face crop to the server-side `verifyFace` Cloud Function.
      *
-     * @param gender Classifier label (`"male"` / `"female"`).
-     * @param confidence Classifier confidence in `[0,1]`.
-     * @return [Result] success when written.
+     * The backend (only writer allowed by RTDB rules) runs Face++ detection and writes
+     * `Users/{uid}/verification` with admin privileges, making the badge tamper-proof.
+     *
+     * @param imageBase64 Base64 JPEG of the upright face crop (no wraps / no data-URI prefix).
+     * @return [Result] with the server-written verification payload.
      * @author udit
      */
-    suspend fun saveFaceVerification(gender: String, confidence: Double): Result<Unit>
+    suspend fun verifyFaceWithServer(imageBase64: String): Result<FaceVerification>
 
     /**
      * Persists profile image reference (HTTPS URL, or `data:image/...;base64,...` when using RTDB-only avatars).

@@ -437,6 +437,180 @@ exports.changeUsername = onCall(
 );
 
 // ---------------------------------------------------------------------------
+// Callable: verifyFace — server-side, tamper-proof face verification.
+//
+// Flow: the app runs the on-device ML Kit liveness challenge first (blink/smile),
+// then uploads the captured face crop here. This function calls the Face++ detect
+// API and — only when a single, good-quality face is found — writes
+// `Users/{uid}/verification` with ADMIN privileges. Clients cannot write that
+// node (see firebase/database.rules.json), so the verified badge cannot be forged.
+//
+// Secrets (Blaze required — already enabled):
+//   firebase functions:secrets:set FACEPP_KEY
+//   firebase functions:secrets:set FACEPP_SECRET
+// Face++ keys: https://console.faceplusplus.com (free tier ≈ 30,000 calls/month).
+//
+// The response of a successful check is cached for VERIFY_CACHE_MS so accidental
+// re-runs don't burn the Face++ quota.
+// ---------------------------------------------------------------------------
+const {defineSecret} = require("firebase-functions/v2/params");
+const FACEPP_KEY = defineSecret("FACEPP_KEY");
+const FACEPP_SECRET = defineSecret("FACEPP_SECRET");
+
+const VERIFY_MIN_IMAGE_BYTES = 1024; // 1 KB — anything smaller can't be a face shot
+const VERIFY_MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB decoded ceiling
+const VERIFY_MIN_FACE_QUALITY = 0.30; // Face++ facequality.value threshold
+const VERIFY_CACHE_MS = 24 * 60 * 60 * 1000; // 24 h reuse of a fresh verdict
+
+const VERIFY_ERR = {
+  NOT_SIGNED_IN: "NOT_SIGNED_IN",
+  NOT_CONFIGURED: "VERIFY_NOT_CONFIGURED",
+  BAD_IMAGE: "VERIFY_BAD_IMAGE",
+  NO_FACE: "VERIFY_NO_FACE",
+  UPSTREAM: "VERIFY_UPSTREAM_FAILED",
+  COOLDOWN: "VERIFY_COOLDOWN",
+};
+
+/** Calls Face++ /facepp/v3/detect and returns the first face payload. */
+async function faceppDetect(imageBase64) {
+  const key = FACEPP_KEY.value();
+  const secret = FACEPP_SECRET.value();
+  if (!key || !secret) {
+    throw new HttpsError("failed-precondition", VERIFY_ERR.NOT_CONFIGURED);
+  }
+  const body = new URLSearchParams({
+    api_key: key,
+    api_secret: secret,
+    image_base64: imageBase64,
+    return_attributes: "gender,age,facequality",
+  });
+  let response;
+  try {
+    response = await fetch("https://api-us.faceplusplus.com/facepp/v3/detect", {
+      method: "POST",
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      body: body.toString(),
+    });
+  } catch (e) {
+    console.error("Face++ network failure", e);
+    throw new HttpsError("unavailable", VERIFY_ERR.UPSTREAM);
+  }
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload) {
+    console.error("Face++ error", response.status, payload);
+    if (payload && payload.error_message && String(payload.error_message).includes("OUT_OF")) {
+      throw new HttpsError("resource-exhausted", VERIFY_ERR.COOLDOWN);
+    }
+    throw new HttpsError("unavailable", VERIFY_ERR.UPSTREAM);
+  }
+  return payload;
+}
+
+exports.verifyFace = onCall(
+    {
+      region: "us-central1",
+      timeoutSeconds: 60,
+      memory: "256MB",
+      secrets: [FACEPP_KEY, FACEPP_SECRET],
+    },
+    async (request) => {
+      const uid = request.auth && request.auth.uid;
+      if (!uid) throw new HttpsError("unauthenticated", VERIFY_ERR.NOT_SIGNED_IN);
+
+      const imageBase64 = request.data && request.data.imageBase64;
+      if (typeof imageBase64 !== "string" || imageBase64.length === 0) {
+        throw new HttpsError("invalid-argument", VERIFY_ERR.BAD_IMAGE);
+      }
+      const decodedBytes = Math.floor(imageBase64.length * 3 / 4);
+      if (decodedBytes < VERIFY_MIN_IMAGE_BYTES || decodedBytes > VERIFY_MAX_IMAGE_BYTES) {
+        throw new HttpsError("invalid-argument", VERIFY_ERR.BAD_IMAGE);
+      }
+
+      const db = getDatabase();
+      const verificationRef = db.ref(`${NODE_USERS}/${uid}/verification`);
+
+      // Reuse a fresh verdict before spending a Face++ call.
+      const existingSnap = await verificationRef.get();
+      if (existingSnap.exists()) {
+        const existing = existingSnap.val() || {};
+        if (
+          existing.faceVerified === true &&
+          Number(existing.verifiedAt || 0) > Date.now() - VERIFY_CACHE_MS
+        ) {
+          return {
+            ok: true,
+            cached: true,
+            faceVerified: true,
+            gender: String(existing.gender || ""),
+            confidence: Number(existing.confidence || 0),
+            verifiedAt: Number(existing.verifiedAt || 0),
+          };
+        }
+      }
+
+      const result = await faceppDetect(imageBase64);
+      const faces = Array.isArray(result.faces) ? result.faces : [];
+      if (faces.length === 0) {
+        throw new HttpsError("failed-precondition", VERIFY_ERR.NO_FACE);
+      }
+      if (faces.length > 1) {
+        throw new HttpsError("failed-precondition", VERIFY_ERR.NO_FACE);
+      }
+      const face = faces[0];
+      const attrs = face.attributes || {};
+      const faceQuality = Number((attrs.facequality && attrs.facequality.value) || 0);
+      if (faceQuality < VERIFY_MIN_FACE_QUALITY) {
+        throw new HttpsError("failed-precondition", VERIFY_ERR.NO_FACE);
+      }
+      const genderValue = String((attrs.gender && attrs.gender.value) || "").toLowerCase();
+      const genderConfidence = Number((attrs.gender && attrs.gender.confidence) || 0);
+      if (!["male", "female"].includes(genderValue)) {
+        throw new HttpsError("failed-precondition", VERIFY_ERR.NO_FACE);
+      }
+
+      const verifiedAt = Date.now();
+      const confidence = (genderConfidence / 100).toFixed(4);
+
+      // Admin-SDK write — the ONLY path that can set the badge (client writes denied by rules).
+      await verificationRef.set({
+        faceVerified: true,
+        gender: genderValue,
+        confidence: Number(confidence),
+        verifiedAt,
+        source: "faceplusplus",
+        method: "server",
+      });
+
+      // Drop a system notification so the user sees the approval in-app.
+      try {
+        await db.ref(`${"Notifications"}/${uid}`).push().set({
+          type: "system",
+          actorId: "",
+          actorName: "Trigger",
+          actorAvatar: "",
+          postId: "",
+          text: "Your face verification was approved. The verified badge is now on your profile.",
+          createdAt: verifiedAt,
+          read: false,
+        });
+      } catch (e) {
+        console.error("Notification write failed", e);
+      }
+
+      const age = attrs.age && attrs.age.value != null ? Number(attrs.age.value) : null;
+      return {
+        ok: true,
+        cached: false,
+        faceVerified: true,
+        gender: genderValue,
+        confidence: Number(confidence),
+        verifiedAt,
+        age,
+      };
+    },
+);
+
+// ---------------------------------------------------------------------------
 // Trigger: FCM data push on new chat message (unchanged behavior)
 // ---------------------------------------------------------------------------
 exports.onNewChatMessage = onValueCreated(
